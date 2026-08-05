@@ -1,0 +1,6 @@
+{
+  "name": "ArtFlow",
+  "description": "Mobile-first digital art workspace with project tracking, reference library, color palettes, and daily creative prompts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

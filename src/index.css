@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+  .font-sans {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Base custom variables matching screenshot and Elegant Dark design system */
+:root {
+  --bg-dark: #191715;
+  --surface-dark: #272320;
+  --surface-elevated: #332E2A;
+  --cream-primary: #F1E2CB;
+  --accent-beige: #D9B98D;
+  --text-muted: #A99D8E;
+  --border-subtle: #514940;
+}
+
+body {
+  background-color: #12100E;
+  color: #F1E2CB;
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.card-elegant {
+  background-color: var(--surface-dark);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.card-elevated {
+  background-color: var(--surface-elevated);
+  border: 1px solid #433D37;
+  border-radius: 1.25rem;
+}
+
