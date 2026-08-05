@@ -1,33 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { ProjectCard } from '../components/ProjectCard';
 import { MOCK_PROJECTS, HERO_ARTWORK_URL } from '../data/mockData';
-import { Project, ProjectStatus } from '../types';
+import { Project } from '../types';
+import { useAuth } from '../hooks/useAuth';
+import { listProjects, createProject, deleteProject } from '../services/projectService';
 
 export const ProjectsPage: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS.slice(0, 3));
+  const { user } = useAuth();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState('Digital Painting');
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCreateProject = (e: React.FormEvent) => {
+  const fetchProjects = async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const data = await listProjects(user.uid);
+      setProjects(data.length > 0 ? data : MOCK_PROJECTS.slice(0, 3));
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+      setProjects(MOCK_PROJECTS.slice(0, 3));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, [user]);
+
+  const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || !user) return;
+    setError(null);
+    setIsCreating(true);
 
-    const newProj: Project = {
-      id: `proj-${Date.now()}`,
-      title: newTitle,
-      category: newCategory,
-      status: 'Sketching' as ProjectStatus,
-      progress: 10,
-      imageUrl: HERO_ARTWORK_URL,
-    };
+    try {
+      const created = await createProject(user.uid, {
+        title: newTitle,
+        category: newCategory,
+        status: 'sketching',
+        progress: 10,
+        imageUrl: HERO_ARTWORK_URL,
+      });
 
-    setProjects([newProj, ...projects]);
-    setNewTitle('');
-    setIsModalOpen(false);
+      setProjects((prev) => [created, ...prev]);
+      setNewTitle('');
+      setIsModalOpen(false);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create project.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleMoreClick = async (projectId: string) => {
+    if (!user) return;
+    if (window.confirm('Would you like to delete this project?')) {
+      try {
+        await deleteProject(user.uid, projectId);
+        setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      } catch (err) {
+        console.error('Failed to delete project:', err);
+      }
+    }
   };
 
   return (
@@ -50,11 +93,25 @@ export const ProjectsPage: React.FC = () => {
         </div>
 
         {/* Vertically Stacked Project Cards */}
-        <div className="space-y-3.5">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="py-12 text-center text-[#A99D8E] text-xs">
+            Loading your projects...
+          </div>
+        ) : projects.length > 0 ? (
+          <div className="space-y-3.5">
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onMoreClick={() => handleMoreClick(project.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="py-12 text-center text-[#A99D8E]">
+            <p className="text-sm font-sans">No projects yet. Create your first project above!</p>
+          </div>
+        )}
       </main>
 
       {/* New Project Modal */}
@@ -72,6 +129,12 @@ export const ProjectsPage: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {error && (
+              <div className="p-2.5 bg-red-900/40 border border-red-500/50 rounded-xl text-red-200 text-xs font-sans">
+                {error}
+              </div>
+            )}
 
             <form onSubmit={handleCreateProject} className="space-y-3.5 pt-1">
               <div>
@@ -115,9 +178,10 @@ export const ProjectsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-full bg-[#F1E2CB] text-[#191715] font-semibold text-xs font-sans"
+                  disabled={isCreating}
+                  className="flex-1 py-2.5 rounded-full bg-[#F1E2CB] text-[#191715] font-semibold text-xs font-sans hover:bg-[#D9B98D] transition-colors"
                 >
-                  Create
+                  {isCreating ? 'Creating...' : 'Create'}
                 </button>
               </div>
             </form>

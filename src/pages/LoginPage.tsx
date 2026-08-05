@@ -5,15 +5,51 @@ import { HERO_ARTWORK_URL } from '../data/mockData';
 import { FormInput } from '../components/FormInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ArtworkImage } from '../components/ArtworkImage';
+import { useAuth } from '../hooks/useAuth';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const { signIn, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/home');
+    setError(null);
+    setResetMessage(null);
+    setIsSubmitting(true);
+
+    try {
+      await signIn(email, password);
+      navigate('/home');
+    } catch (err: any) {
+      setError(err?.message || 'Invalid email or password.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address to reset your password.');
+      return;
+    }
+    setError(null);
+    setResetMessage(null);
+    setIsResetting(true);
+
+    try {
+      const res = await resetPassword(email);
+      setResetMessage(res.message);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to send password reset email.');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -72,6 +108,18 @@ export const LoginPage: React.FC = () => {
             </button>
           </div>
 
+          {error && (
+            <div className="mb-3.5 p-3 rounded-xl bg-red-100 border border-red-300 text-red-800 text-xs font-sans">
+              {error}
+            </div>
+          )}
+
+          {resetMessage && (
+            <div className="mb-3.5 p-3 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-sans">
+              {resetMessage}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <FormInput
               label="Email"
@@ -91,9 +139,20 @@ export const LoginPage: React.FC = () => {
               required
             />
 
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={isResetting}
+                className="text-xs font-sans text-[#5C5144] hover:text-[#191715] underline"
+              >
+                {isResetting ? 'Sending reset link...' : 'Forgot password?'}
+              </button>
+            </div>
+
             <div className="pt-2">
-              <PrimaryButton type="submit" variant="dark" size="lg">
-                Log in
+              <PrimaryButton type="submit" variant="dark" size="lg" disabled={isSubmitting}>
+                {isSubmitting ? 'Logging in...' : 'Log in'}
               </PrimaryButton>
             </div>
           </form>

@@ -1,21 +1,82 @@
-import React, { useState } from 'react';
-import { Flame, Star, ChevronRight, Pencil } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Flame, Star, ChevronRight, Pencil, LogOut } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { ProfileStats } from '../components/ProfileStats';
 import { SectionHeader } from '../components/SectionHeader';
 import { ArtworkImage } from '../components/ArtworkImage';
-import { MOCK_USER, MOCK_ACHIEVEMENTS, MOCK_ACTIVITIES } from '../data/mockData';
+import { MOCK_ACHIEVEMENTS, MOCK_ACTIVITIES } from '../data/mockData';
+import { useAuth } from '../hooks/useAuth';
+import { updateUserProfile } from '../services/userService';
+import { listProjects } from '../services/projectService';
+import { listReferences } from '../services/referenceService';
+import { listPalettes } from '../services/paletteService';
 
 export const ProfilePage: React.FC = () => {
-  const [user, setUser] = useState(MOCK_USER);
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const [isEditingBio, setIsEditingBio] = useState(false);
-  const [bioInput, setBioInput] = useState(user.bio);
+  const [bioInput, setBioInput] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSaveBio = () => {
-    setUser({ ...user, bio: bioInput });
-    setIsEditingBio(false);
+  const [stats, setStats] = useState({
+    projectsCount: 12,
+    referencesCount: 48,
+    palettesCount: 8,
+  });
+
+  useEffect(() => {
+    if (profile?.bio) {
+      setBioInput(profile.bio);
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    async function loadStats() {
+      if (!user) return;
+      try {
+        const [projects, references, palettes] = await Promise.all([
+          listProjects(user.uid),
+          listReferences(user.uid),
+          listPalettes(user.uid),
+        ]);
+        setStats({
+          projectsCount: projects.length > 0 ? projects.length : 12,
+          referencesCount: references.length > 0 ? references.length : 48,
+          palettesCount: palettes.length > 0 ? palettes.length : 8,
+        });
+      } catch (err) {
+        console.error('Failed to load profile stats:', err);
+      }
+    }
+    loadStats();
+  }, [user]);
+
+  const handleSaveBio = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      await updateUserProfile(user.uid, { bio: bioInput });
+      await refreshProfile();
+      setIsEditingBio(false);
+    } catch (err) {
+      console.error('Failed to update bio:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
+  const name = profile?.displayName || profile?.name || user?.displayName || 'Artist';
+  const username = profile?.username || '@artist';
+  const bio = profile?.bio || 'Passionate artist creating art on ArtFlow.';
+  const avatarUrl = profile?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
 
   return (
     <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] mx-auto relative pb-24">
@@ -28,8 +89,8 @@ export const ProfilePage: React.FC = () => {
             {/* Avatar with edit overlay */}
             <div className="relative w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-[#433D37] shadow-inner">
               <ArtworkImage
-                src={user.avatarUrl}
-                alt={user.name}
+                src={avatarUrl}
+                alt={name}
                 className="w-full h-full object-cover"
               />
               <button
@@ -44,10 +105,10 @@ export const ProfilePage: React.FC = () => {
             {/* Profile Info */}
             <div className="flex-1 min-w-0 text-left">
               <h2 className="font-serif text-[22px] font-normal text-[#F1E2CB] leading-tight truncate">
-                {user.name}
+                {name}
               </h2>
               <p className="text-xs font-sans text-[#A99D8E] mt-0.5">
-                {user.username}
+                {username}
               </p>
 
               {isEditingBio ? (
@@ -60,14 +121,15 @@ export const ProfilePage: React.FC = () => {
                   />
                   <button
                     onClick={handleSaveBio}
-                    className="px-2.5 py-1 text-xs bg-[#F1E2CB] text-[#191715] rounded-lg font-medium"
+                    disabled={isSaving}
+                    className="px-2.5 py-1 text-xs bg-[#F1E2CB] text-[#191715] rounded-lg font-medium hover:bg-[#D9B98D]"
                   >
-                    Save
+                    {isSaving ? '...' : 'Save'}
                   </button>
                 </div>
               ) : (
                 <p className="text-xs font-sans text-[#D9B98D] mt-1.5 line-clamp-2">
-                  {user.bio}
+                  {bio}
                 </p>
               )}
             </div>
@@ -75,10 +137,21 @@ export const ProfilePage: React.FC = () => {
 
           {/* Statistics Bar */}
           <ProfileStats
-            projectsCount={user.projectsCount}
-            referencesCount={user.referencesCount}
-            palettesCount={user.palettesCount}
+            projectsCount={stats.projectsCount}
+            referencesCount={stats.referencesCount}
+            palettesCount={stats.palettesCount}
           />
+        </div>
+
+        {/* Account Actions / Logout */}
+        <div className="flex justify-end">
+          <button
+            onClick={handleLogout}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#272320] border border-[#3A332C] text-[#E06D53] hover:bg-[#332E2A] text-xs font-sans font-medium transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Log Out</span>
+          </button>
         </div>
 
         {/* Achievements Section */}

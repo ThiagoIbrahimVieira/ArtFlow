@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
 import { BottomNavigation } from '../components/BottomNavigation';
@@ -8,17 +8,56 @@ import { ReferenceCard } from '../components/ReferenceCard';
 import { PaletteCard } from '../components/PaletteCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { MOCK_PROJECTS, MOCK_REFERENCES, MOCK_PALETTES } from '../data/mockData';
+import { useAuth } from '../hooks/useAuth';
+import { listProjects } from '../services/projectService';
+import { listReferences } from '../services/referenceService';
+import { listPalettes } from '../services/paletteService';
+import { Project, Reference, Palette } from '../types';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [promptMessage, setPromptMessage] = useState<string | null>(null);
 
-  // Active projects for home (Knights of Eldoria & Portrait Study)
-  const homeProjects = MOCK_PROJECTS.slice(3, 5);
-  // Recent references for home (Marble Study & Forest Mood)
-  const homeReferences = MOCK_REFERENCES.slice(0, 2);
-  // Palette of the day
-  const paletteOfDay = MOCK_PALETTES[0];
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [references, setReferences] = useState<Reference[]>([]);
+  const [palettes, setPalettes] = useState<Palette[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadHomeData() {
+      if (!user) return;
+      try {
+        const [fetchedProjects, fetchedReferences, fetchedPalettes] = await Promise.all([
+          listProjects(user.uid),
+          listReferences(user.uid),
+          listPalettes(user.uid),
+        ]);
+
+        if (isMounted) {
+          setProjects(fetchedProjects.length > 0 ? fetchedProjects.slice(0, 2) : MOCK_PROJECTS.slice(3, 5));
+          setReferences(fetchedReferences.length > 0 ? fetchedReferences.slice(0, 2) : MOCK_REFERENCES.slice(0, 2));
+          setPalettes(fetchedPalettes.length > 0 ? fetchedPalettes : MOCK_PALETTES);
+        }
+      } catch (err) {
+        console.error('Error loading home data:', err);
+        if (isMounted) {
+          setProjects(MOCK_PROJECTS.slice(3, 5));
+          setReferences(MOCK_REFERENCES.slice(0, 2));
+          setPalettes(MOCK_PALETTES);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadHomeData();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  const paletteOfDay = palettes[0] || MOCK_PALETTES[0];
 
   const handleViewPrompt = () => {
     setPromptMessage("Daily Challenge: Use warm ochres, burned siennas, terracotta, and soft creams to draw a character with autumn lighting!");
@@ -48,15 +87,19 @@ export const HomePage: React.FC = () => {
             title="Active Projects"
             onActionClick={() => navigate('/projects')}
           />
-          <div className="flex gap-3.5 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:-mx-5 sm:px-5">
-            {homeProjects.map((proj) => (
-              <ProjectCard
-                key={proj.id}
-                project={proj}
-                variant="compact"
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="py-6 text-center text-xs text-[#A99D8E]">Loading projects...</div>
+          ) : (
+            <div className="flex gap-3.5 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:-mx-5 sm:px-5">
+              {projects.map((proj) => (
+                <ProjectCard
+                  key={proj.id}
+                  project={proj}
+                  variant="compact"
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Recent References */}
@@ -65,11 +108,15 @@ export const HomePage: React.FC = () => {
             title="Recent References"
             onActionClick={() => navigate('/references')}
           />
-          <div className="grid grid-cols-2 gap-3.5">
-            {homeReferences.map((ref) => (
-              <ReferenceCard key={ref.id} reference={ref} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="py-6 text-center text-xs text-[#A99D8E]">Loading references...</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3.5">
+              {references.map((ref) => (
+                <ReferenceCard key={ref.id} reference={ref} />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Palette of the Day */}

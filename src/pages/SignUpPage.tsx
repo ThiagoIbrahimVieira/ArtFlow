@@ -5,16 +5,30 @@ import { HERO_ARTWORK_URL } from '../data/mockData';
 import { FormInput } from '../components/FormInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ArtworkImage } from '../components/ArtworkImage';
+import { useAuth } from '../hooks/useAuth';
 
 export const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/home');
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      await signUp({ displayName: fullName, email, password });
+      navigate('/home');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create account. Please check your inputs.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -73,6 +87,12 @@ export const SignUpPage: React.FC = () => {
             </button>
           </div>
 
+          {error && (
+            <div className="mb-3.5 p-3 rounded-xl bg-red-100 border border-red-300 text-red-800 text-xs font-sans">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <FormInput
               label="Full Name"
@@ -101,8 +121,8 @@ export const SignUpPage: React.FC = () => {
             />
 
             <div className="pt-2">
-              <PrimaryButton type="submit" variant="dark" size="lg">
-                Create account
+              <PrimaryButton type="submit" variant="dark" size="lg" disabled={isSubmitting}>
+                {isSubmitting ? 'Creating account...' : 'Create account'}
               </PrimaryButton>
             </div>
           </form>

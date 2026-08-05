@@ -7,7 +7,12 @@ interface StatusBadgeProps {
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '' }) => {
-  const dotColors: Record<ProjectStatus, string> = {
+  const dotColors: Record<string, string> = {
+    'idea': 'bg-[#988775]',
+    'sketching': 'bg-[#D9B98D]',
+    'in_progress': 'bg-[#E5A855]',
+    'review': 'bg-[#7AA88D]',
+    'completed': 'bg-[#5B8C69]',
     'Sketching': 'bg-[#D9B98D]',
     'In Progress': 'bg-[#E5A855]',
     'Review': 'bg-[#7AA88D]',

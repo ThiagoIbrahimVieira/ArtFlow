@@ -12,7 +12,9 @@ export const TEMPLE_RUINS_URL = "https://images.unsplash.com/photo-1552832230-c0
 export const KNIGHT_PORTRAIT_URL = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop"; // Male portrait armor style
 
 export const MOCK_USER: UserProfile = {
+  displayName: "Elena Mora",
   name: "Elena Mora",
+  email: "elena@artflow.app",
   username: "@elenastudio",
   bio: "Illustrator & concept artist",
   avatarUrl: HERO_ARTWORK_URL,
