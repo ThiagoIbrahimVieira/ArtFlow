@@ -10,8 +10,6 @@ import {
   onAuthStateChanged,
   User as FirebaseUser,
 } from 'firebase/auth';
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
 
 import { auth, googleProvider } from '../lib/firebase';
 import { createUserProfile, getUserProfile } from './userService';
