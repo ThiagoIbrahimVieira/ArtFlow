@@ -1,4 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
 import { getAdminAuth } from '../lib/firebaseAdmin';
 import { checkRateLimit } from '../lib/rateLimit';
 import {
@@ -86,7 +85,7 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // 7. Call Gemini AI via @google/genai
+  // 7. Call Gemini AI via native REST API (fetch)
   const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
   const promptText = requestData.prompt || [
     requestData.medium ? `Art Medium: ${requestData.medium}` : '',
@@ -96,9 +95,8 @@ export default async function handler(req: any, res: any) {
   ].filter(Boolean).join(', ');
 
   try {
-    const client = new GoogleGenAI({ apiKey });
-    const result = await client.models.generateContent({
-      model: modelName,
+    const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const payload = {
       contents: [
         {
           role: 'user',
@@ -113,16 +111,58 @@ export default async function handler(req: any, res: any) {
           ],
         },
       ],
-      config: {
+      generationConfig: {
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 1000,
         responseMimeType: 'application/json',
       },
+    };
+
+    const response = await fetch(endpointUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
 
-    const text = result.text;
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      const errLower = errText.toLowerCase();
+
+      if (
+        response.status === 429 ||
+        errLower.includes('quota') ||
+        errLower.includes('rate limit') ||
+        errLower.includes('resource_exhausted')
+      ) {
+        if (errLower.includes('quota') || errLower.includes('daily')) {
+          return res.status(429).json({
+            data: null,
+            error: {
+              code: 'GEMINI_DAILY_QUOTA_EXCEEDED',
+              message: 'A cota diária gratuita do Gemini API foi excedida pelo Google. Tente novamente mais tarde.',
+            },
+          });
+        }
+        return res.status(429).json({
+          data: null,
+          error: {
+            code: 'GEMINI_RATE_LIMIT_EXCEEDED',
+            message: 'Limite de requisições por minuto do Gemini atingido. Aguarde alguns segundos.',
+          },
+        });
+      }
+
+      return res.status(500).json({
+        data: null,
+        error: { code: 'GEMINI_ERROR', message: 'Failed to generate palette with Gemini AI.' },
+      });
+    }
+
+    const resJson: any = await response.json();
+    const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+
     if (!text) {
       return res.status(500).json({
         data: null,
@@ -174,35 +214,6 @@ export default async function handler(req: any, res: any) {
       error: null,
     });
   } catch (err: any) {
-    const errMsg = err?.message || '';
-    const errLower = errMsg.toLowerCase();
-
-    // Differentiate Rate Limit / Quota Exceeded errors from Gemini
-    if (
-      err?.status === 429 ||
-      err?.code === 429 ||
-      errLower.includes('quota exceeded') ||
-      errLower.includes('rate limit') ||
-      errLower.includes('resource_exhausted')
-    ) {
-      if (errLower.includes('quota') || errLower.includes('daily')) {
-        return res.status(429).json({
-          data: null,
-          error: {
-            code: 'GEMINI_DAILY_QUOTA_EXCEEDED',
-            message: 'A cota diária gratuita do Gemini API foi excedida pelo Google. Tente novamente mais tarde.',
-          },
-        });
-      }
-      return res.status(429).json({
-        data: null,
-        error: {
-          code: 'GEMINI_RATE_LIMIT_EXCEEDED',
-          message: 'Limite de requisições por minuto do Gemini atingido. Aguarde alguns segundos.',
-        },
-      });
-    }
-
     // Generic controlled error without stack trace leakage
     return res.status(500).json({
       data: null,

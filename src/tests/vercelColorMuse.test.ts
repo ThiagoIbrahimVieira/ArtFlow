@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import handler from '../../api/ai/color-muse';
 
 const mockVerifyIdToken = vi.fn();
@@ -14,19 +14,6 @@ vi.mock('../../api/lib/firebaseAdmin', () => ({
 vi.mock('../../api/lib/rateLimit', () => ({
   checkRateLimit: vi.fn(),
 }));
-
-const mockGenerateContent = vi.fn();
-
-// Mock @google/genai SDK
-vi.mock('@google/genai', () => {
-  return {
-    GoogleGenAI: class {
-      models = {
-        generateContent: (...args: any[]) => mockGenerateContent(...args),
-      };
-    },
-  };
-});
 
 import { checkRateLimit } from '../../api/lib/rateLimit';
 
@@ -57,11 +44,16 @@ function createMockReqRes(method: string = 'POST', headers: Record<string, strin
 
 describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   const origEnv = process.env;
+  const origFetch = globalThis.fetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...origEnv, GEMINI_API_KEY: 'test-fake-api-key' };
     (checkRateLimit as any).mockResolvedValue({ allowed: true });
+  });
+
+  afterEach(() => {
+    globalThis.fetch = origFetch;
   });
 
   it('1. GET returns 405 Method Not Allowed', async () => {
@@ -120,9 +112,18 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
       contrastNotes: ['High contrast with white text'],
     };
 
-    mockGenerateContent.mockResolvedValueOnce({
-      text: JSON.stringify(mockPalette),
-    });
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [{ text: JSON.stringify(mockPalette) }],
+            },
+          },
+        ],
+      }),
+    } as any);
 
     const { req, res } = createMockReqRes(
       'POST',
@@ -139,10 +140,12 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
 
   it('7. Gemini 429 rate limit returns correct code', async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-    const err429 = new Error('Quota exceeded for Gemini');
-    (err429 as any).status = 429;
 
-    mockGenerateContent.mockRejectedValueOnce(err429);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: async () => 'Quota exceeded for Gemini daily',
+    } as any);
 
     const { req, res } = createMockReqRes(
       'POST',
@@ -178,7 +181,8 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
 
   it('9 & 10. No error exposes stack trace or GEMINI_API_KEY', async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-    mockGenerateContent.mockRejectedValueOnce(new Error('Internal unexpected error secret=KEY123'));
+
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Internal unexpected error secret=KEY123'));
 
     const { req, res } = createMockReqRes(
       'POST',
