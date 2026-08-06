@@ -52,14 +52,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const unsubscribe = listenForAuthenticationChanges(async (firebaseUser) => {
+    const unsubscribe = listenForAuthenticationChanges((firebaseUser) => {
       setUser(firebaseUser);
+      setAuthLoading(false);
       if (firebaseUser) {
-        await fetchProfile(firebaseUser.uid);
+        fetchProfile(firebaseUser.uid);
       } else {
         setProfile(null);
       }
-      setAuthLoading(false);
     });
 
     return () => unsubscribe();
