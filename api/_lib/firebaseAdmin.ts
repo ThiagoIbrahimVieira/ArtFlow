@@ -1,5 +1,9 @@
-let adminAuthInstance: any = null;
-let adminDbInstance: any = null;
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth, Auth } from 'firebase-admin/auth';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+
+let adminAuthInstance: Auth | null = null;
+let adminDbInstance: Firestore | null = null;
 let initError: string | null = null;
 
 function cleanValue(val?: string): string {
@@ -28,10 +32,6 @@ function initFirebaseAdmin() {
   if (adminAuthInstance && adminDbInstance) return;
 
   try {
-    const { initializeApp, getApps, cert } = require('firebase-admin/app');
-    const { getAuth } = require('firebase-admin/auth');
-    const { getFirestore } = require('firebase-admin/firestore');
-
     if (getApps().length > 0) {
       const app = getApps()[0];
       adminAuthInstance = getAuth(app);
@@ -63,7 +63,7 @@ function initFirebaseAdmin() {
   }
 }
 
-export function getAdminAuth(): any {
+export function getAdminAuth(): Auth {
   initFirebaseAdmin();
   if (!adminAuthInstance) {
     throw new Error(initError || 'Firebase Admin Auth não foi inicializado.');
@@ -71,7 +71,7 @@ export function getAdminAuth(): any {
   return adminAuthInstance;
 }
 
-export function getAdminDb(): any {
+export function getAdminDb(): Firestore {
   initFirebaseAdmin();
   if (!adminDbInstance) {
     throw new Error(initError || 'Firebase Admin Firestore não foi inicializado.');
