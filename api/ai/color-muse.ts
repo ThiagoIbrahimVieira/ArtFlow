@@ -1,9 +1,9 @@
-import { getAdminAuth } from '../_lib/firebaseAdmin.js';
-import { checkRateLimit } from '../_lib/rateLimit.js';
+import { getFirebaseAdmin } from '../lib/firebaseAdmin';
+import { checkRateLimit } from '../lib/rateLimit';
 import {
   ColorMuseRequestSchema,
   GeminiPaletteSchema,
-} from '../_lib/schemas.js';
+} from '../lib/colorMuseSchemas';
 
 export default async function handler(req: any, res: any) {
   // 1. Method check: POST only
@@ -23,7 +23,28 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // 3. Authorization header check & verification
+  // 3. Initialize Firebase Admin lazily inside handler
+  let adminAuth: any;
+  let adminDb: any;
+
+  try {
+    const firebaseAdmin = getFirebaseAdmin();
+    adminAuth = firebaseAdmin.auth;
+    adminDb = firebaseAdmin.db;
+  } catch (error: any) {
+    console.error("Firebase Admin configuration failed:", error?.message || error);
+
+    return res.status(500).json({
+      data: null,
+      error: {
+        code: "FIREBASE_ADMIN_CONFIG_ERROR",
+        message:
+          "A configuração do servidor Firebase está inválida.",
+      },
+    });
+  }
+
+  // 4. Authorization header check & verification
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
@@ -35,26 +56,19 @@ export default async function handler(req: any, res: any) {
   const idToken = authHeader.split(' ')[1];
   let uid: string;
   try {
-    const adminAuth = getAdminAuth();
     const decoded = await adminAuth.verifyIdToken(idToken);
     uid = decoded.uid;
   } catch (e: any) {
     const msg = e?.message || '';
     console.error('verifyIdToken failed:', msg);
-    if (msg.includes('variáveis') || msg.includes('FIREBASE') || msg.includes('not initialized')) {
-      return res.status(500).json({
-        data: null,
-        error: { code: 'CONFIG_ERROR', message: msg },
-      });
-    }
     return res.status(401).json({
       data: null,
-      error: { code: 'AUTH_REQUIRED', message: `Invalid or expired ID token: ${msg}` },
+      error: { code: 'AUTH_REQUIRED', message: 'Invalid or expired ID token.' },
     });
   }
 
-  // 4. Rate-limit check (App rate limit)
-  const rateLimitResult = await checkRateLimit(uid);
+  // 5. Rate-limit check (App rate limit)
+  const rateLimitResult = await checkRateLimit(uid, adminDb);
   if (!rateLimitResult.allowed) {
     return res.status(429).json({
       data: null,
@@ -65,7 +79,7 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // 5. Input payload validation with Zod
+  // 6. Input payload validation with Zod
   const rawBody = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
   const parseResult = ColorMuseRequestSchema.safeParse(rawBody);
   if (!parseResult.success) {
@@ -77,7 +91,7 @@ export default async function handler(req: any, res: any) {
 
   const requestData = parseResult.data;
 
-  // 6. Gemini API Key check
+  // 7. Gemini API Key check
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(500).json({
@@ -86,9 +100,9 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // 7. Call Gemini AI via native REST API (fetch)
+  // 8. Call Gemini AI via native REST API (fetch)
   const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-  const promptText = requestData.prompt || [
+  const promptText = [
     requestData.medium ? `Art Medium: ${requestData.medium}` : '',
     requestData.subject ? `Subject: ${requestData.subject}` : '',
     requestData.mood ? `Mood: ${requestData.mood}` : '',
@@ -181,7 +195,7 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // 8. Validate Gemini response against Zod schema
+    // 9. Validate Gemini response against Zod schema
     const validation = GeminiPaletteSchema.safeParse(parsed);
     if (!validation.success) {
       return res.status(500).json({

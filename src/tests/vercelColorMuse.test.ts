@@ -4,18 +4,20 @@ import handler from '../../api/ai/color-muse';
 const mockVerifyIdToken = vi.fn();
 
 // Mock firebaseAdmin and rateLimit modules
-vi.mock('../../api/_lib/firebaseAdmin.js', () => ({
-  getAdminAuth: () => ({
-    verifyIdToken: mockVerifyIdToken,
+vi.mock('../../api/lib/firebaseAdmin', () => ({
+  getFirebaseAdmin: () => ({
+    auth: {
+      verifyIdToken: mockVerifyIdToken,
+    },
+    db: {},
   }),
-  getAdminDb: () => ({}),
 }));
 
-vi.mock('../../api/_lib/rateLimit.js', () => ({
+vi.mock('../../api/lib/rateLimit', () => ({
   checkRateLimit: vi.fn(),
 }));
 
-import { checkRateLimit } from '../../api/_lib/rateLimit.js';
+import { checkRateLimit } from '../../api/lib/rateLimit';
 
 function createMockReqRes(method: string = 'POST', headers: Record<string, string> = {}, body: any = {}) {
   const req = {
@@ -48,7 +50,13 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env = { ...origEnv, GEMINI_API_KEY: 'test-fake-api-key' };
+    process.env = {
+      ...origEnv,
+      GEMINI_API_KEY: 'test-fake-api-key',
+      FIREBASE_PROJECT_ID: 'projeto-escolar-etec',
+      FIREBASE_CLIENT_EMAIL: 'test@example.com',
+      FIREBASE_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----',
+    };
     (checkRateLimit as any).mockResolvedValue({ allowed: true });
   });
 
@@ -80,7 +88,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
 
   it('4. Invalid payload returns 400', async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-    const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { colorCount: 999 }); // missing prompt/medium and colorCount > 10
+    const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { colorCount: 999 }); // missing required fields
     await handler(req, res);
     expect(res.getStatusCode()).toBe(400);
     expect(res.getResponse()?.error?.code).toBe('VALIDATION_ERROR');
