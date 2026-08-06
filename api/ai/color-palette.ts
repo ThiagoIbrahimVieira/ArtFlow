@@ -59,6 +59,20 @@ Return ONLY a valid JSON object matching this exact structure:
       const json = await apiRes.json();
       if (!apiRes.ok || json.error) {
         lastErrMessage = json.error?.message || `Gemini API returned status ${apiRes.status}`;
+        if (
+          apiRes.status === 429 ||
+          json.error?.status === 'RESOURCE_EXHAUSTED' ||
+          json.error?.code === 429 ||
+          (json.error?.message && json.error.message.toLowerCase().includes('quota exceeded'))
+        ) {
+          return res.status(429).json({
+            data: null,
+            error: {
+              code: 'RATE_LIMIT_EXCEEDED',
+              message: 'A cota gratuita de requisições da IA Gemini foi atingida temporariamente pelo Google. Aguarde 10 segundos e tente novamente!',
+            },
+          });
+        }
         if (apiRes.status === 403 || json.error?.status === 'PERMISSION_DENIED' || json.error?.code === 403) {
           return res.status(403).json({
             data: null,
