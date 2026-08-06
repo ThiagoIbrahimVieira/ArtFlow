@@ -6,7 +6,6 @@ function normalizePrivateKey(key: string): string {
   if (!key) return '';
   let cleaned = key.trim();
 
-  // Strip leading and trailing quotes if pasted with quotes
   if (
     (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
     (cleaned.startsWith("'") && cleaned.endsWith("'"))
@@ -14,10 +13,7 @@ function normalizePrivateKey(key: string): string {
     cleaned = cleaned.slice(1, -1).trim();
   }
 
-  // Replace literal '\n' sequences with real newlines
   cleaned = cleaned.replace(/\\n/g, '\n');
-
-  // Strip carriage returns
   cleaned = cleaned.replace(/\r/g, '');
 
   return cleaned;
@@ -27,7 +23,6 @@ function initFirebaseAdmin() {
   if (adminAuthInstance && adminDbInstance) return;
 
   try {
-    // Dynamic require so module load never crashes Vercel function startup
     const { initializeApp, getApps, cert } = require('firebase-admin/app');
     const { getAuth } = require('firebase-admin/auth');
     const { getFirestore } = require('firebase-admin/firestore');
