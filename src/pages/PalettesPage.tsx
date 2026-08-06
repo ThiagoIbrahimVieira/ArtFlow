@@ -53,6 +53,8 @@ export const PalettesPage: React.FC = () => {
     fetchPalettes();
   }, [user]);
 
+  const isAdmin = user?.email?.toLowerCase() === 'thiagoibrahimvieira@gmail.com';
+
   const [cooldown, setCooldown] = useState<number>(0);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export const PalettesPage: React.FC = () => {
 
   const handleGenerateColorMuse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || cooldown > 0) return;
+    if (!user || (!isAdmin && cooldown > 0)) return;
     setAiLoading(true);
     setAiError(null);
     setGeneratedResult(null);
@@ -102,7 +104,7 @@ export const PalettesPage: React.FC = () => {
       setAiError(err?.message || 'Color Muse server error. Please try again.');
     } finally {
       setAiLoading(false);
-      setCooldown(10);
+      if (!isAdmin) setCooldown(10);
     }
   };
 
@@ -292,12 +294,12 @@ export const PalettesPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    disabled={aiLoading || cooldown > 0}
+                    disabled={aiLoading || (!isAdmin && cooldown > 0)}
                     className="flex-1 py-2.5 rounded-full bg-[#D9B98D] text-[#191715] font-semibold text-xs hover:bg-[#E8DAC7] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {aiLoading
                       ? 'Generating...'
-                      : cooldown > 0
+                      : !isAdmin && cooldown > 0
                       ? `Wait ${cooldown}s...`
                       : 'Generate Palette'}
                   </button>
