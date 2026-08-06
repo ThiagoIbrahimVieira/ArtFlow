@@ -4,14 +4,12 @@ import {
   getApps,
   initializeApp,
 } from "firebase-admin/app";
-import { getAuth, type Auth } from "firebase-admin/auth";
 import {
   getFirestore,
   type Firestore,
 } from "firebase-admin/firestore";
 
 interface FirebaseAdminServices {
-  auth: Auth;
   db: Firestore;
 }
 
@@ -64,7 +62,6 @@ export function getFirebaseAdmin(): FirebaseAdminServices {
         });
 
   cachedServices = {
-    auth: getAuth(app),
     db: getFirestore(app),
   };
 

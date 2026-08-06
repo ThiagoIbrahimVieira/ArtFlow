@@ -10,9 +10,6 @@ vi.mock('../../api/lib/verifyIdToken.js', () => ({
 
 vi.mock('../../api/lib/firebaseAdmin.js', () => ({
   getFirebaseAdmin: () => ({
-    auth: {
-      verifyIdToken: mockVerifyIdToken,
-    },
     db: {},
   }),
 }));
