@@ -74,7 +74,7 @@ export const PalettesPage: React.FC = () => {
     setGeneratedResult(null);
 
     try {
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(true);
       const res = await apiFetch('/api/ai/color-muse', {
         method: 'POST',
         headers: {

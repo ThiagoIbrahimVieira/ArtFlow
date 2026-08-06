@@ -2,16 +2,21 @@ let adminAuthInstance: any = null;
 let adminDbInstance: any = null;
 let initError: string | null = null;
 
-function normalizePrivateKey(key: string): string {
-  if (!key) return '';
-  let cleaned = key.trim();
-
+function cleanValue(val?: string): string {
+  if (!val) return '';
+  let cleaned = val.trim();
   if (
     (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
     (cleaned.startsWith("'") && cleaned.endsWith("'"))
   ) {
     cleaned = cleaned.slice(1, -1).trim();
   }
+  return cleaned;
+}
+
+function normalizePrivateKey(key: string): string {
+  if (!key) return '';
+  let cleaned = cleanValue(key);
 
   cleaned = cleaned.replace(/\\n/g, '\n');
   cleaned = cleaned.replace(/\r/g, '');
@@ -34,18 +39,19 @@ function initFirebaseAdmin() {
       return;
     }
 
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const projectId = cleanValue(process.env.FIREBASE_PROJECT_ID);
+    const clientEmail = cleanValue(process.env.FIREBASE_CLIENT_EMAIL);
     const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 
     if (projectId && clientEmail && rawPrivateKey) {
       const privateKey = normalizePrivateKey(rawPrivateKey);
       const app = initializeApp({
         credential: cert({
-          projectId: projectId.trim(),
-          clientEmail: clientEmail.trim(),
+          projectId,
+          clientEmail,
           privateKey,
         }),
+        projectId,
       });
       adminAuthInstance = getAuth(app);
       adminDbInstance = getFirestore(app);
