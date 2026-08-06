@@ -77,6 +77,11 @@ export const PalettesPage: React.FC = () => {
         }),
       });
 
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Serviço da IA Gemini (Backend Cloud Functions) ainda não publicado na Vercel.');
+      }
+
       const json = await res.json();
       if (!res.ok || json.error) {
         throw new Error(json.error?.message || 'Color Muse generation failed.');

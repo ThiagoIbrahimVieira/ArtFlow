@@ -43,8 +43,13 @@ function mapDocToReference(id: string, data: any): Reference {
 export async function listReferences(uid: string): Promise<Reference[]> {
   try {
     const colRef = collection(db, 'users', uid, 'references');
-    const q = query(colRef, orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      const q = query(colRef, orderBy('createdAt', 'desc'));
+      snap = await getDocs(q);
+    } catch {
+      snap = await getDocs(colRef);
+    }
     return snap.docs.map((d) => mapDocToReference(d.id, d.data()));
   } catch (error) {
     console.error('Failed to list references:', error);

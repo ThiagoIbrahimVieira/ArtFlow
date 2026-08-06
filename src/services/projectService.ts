@@ -97,8 +97,13 @@ function mapDocToProject(id: string, data: any): Project {
 export async function listProjects(uid: string): Promise<Project[]> {
   try {
     const colRef = collection(db, 'users', uid, 'projects');
-    const q = query(colRef, orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      const q = query(colRef, orderBy('createdAt', 'desc'));
+      snap = await getDocs(q);
+    } catch {
+      snap = await getDocs(colRef);
+    }
     return snap.docs.map((d) => mapDocToProject(d.id, d.data()));
   } catch (error) {
     console.error('Failed to list projects:', error);
