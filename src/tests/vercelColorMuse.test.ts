@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import handler from '../../api/ai/color-muse';
 
+const mockVerifyIdToken = vi.fn();
+
 // Mock firebaseAdmin and rateLimit modules
 vi.mock('../../api/lib/firebaseAdmin', () => ({
-  adminAuth: {
-    verifyIdToken: vi.fn(),
-  },
-  adminDb: {},
+  getAdminAuth: () => ({
+    verifyIdToken: mockVerifyIdToken,
+  }),
+  getAdminDb: () => ({}),
 }));
 
 vi.mock('../../api/lib/rateLimit', () => ({
@@ -26,9 +28,7 @@ vi.mock('@google/genai', () => {
   };
 });
 
-import { adminAuth } from '../../api/lib/firebaseAdmin';
 import { checkRateLimit } from '../../api/lib/rateLimit';
-import { GoogleGenAI } from '@google/genai';
 
 function createMockReqRes(method: string = 'POST', headers: Record<string, string> = {}, body: any = {}) {
   const req = {
@@ -79,7 +79,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('3. Token invalid returns 401', async () => {
-    (adminAuth.verifyIdToken as any).mockRejectedValue(new Error('Invalid token'));
+    mockVerifyIdToken.mockRejectedValue(new Error('Invalid token'));
     const { req, res } = createMockReqRes('POST', { authorization: 'Bearer invalid-token' }, { medium: 'oil', subject: 'landscape', mood: 'calm', colorCount: 5 });
     await handler(req, res);
     expect(res.getStatusCode()).toBe(401);
@@ -87,7 +87,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('4. Invalid payload returns 400', async () => {
-    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user-123' });
+    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { colorCount: 999 }); // missing prompt/medium and colorCount > 10
     await handler(req, res);
     expect(res.getStatusCode()).toBe(400);
@@ -96,7 +96,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
 
   it('5. Secret missing returns controlled error', async () => {
     delete process.env.GEMINI_API_KEY;
-    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user-123' });
+    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { medium: 'oil', subject: 'landscape', mood: 'calm', colorCount: 5 });
     await handler(req, res);
     expect(res.getStatusCode()).toBe(500);
@@ -104,7 +104,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('6. Mocked Gemini returns valid palette', async () => {
-    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user-123' });
+    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     const mockPalette = {
       paletteName: 'Mystic Forest',
       description: 'A deep green palette',
@@ -138,7 +138,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('7. Gemini 429 rate limit returns correct code', async () => {
-    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user-123' });
+    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     const err429 = new Error('Quota exceeded for Gemini');
     (err429 as any).status = 429;
 
@@ -157,7 +157,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('8. Internal rate-limit returns different code', async () => {
-    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user-123' });
+    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     (checkRateLimit as any).mockResolvedValue({
       allowed: false,
       code: 'APP_RATE_LIMIT_EXCEEDED',
@@ -177,7 +177,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('9 & 10. No error exposes stack trace or GEMINI_API_KEY', async () => {
-    (adminAuth.verifyIdToken as any).mockResolvedValue({ uid: 'user-123' });
+    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     mockGenerateContent.mockRejectedValueOnce(new Error('Internal unexpected error secret=KEY123'));
 
     const { req, res } = createMockReqRes(
