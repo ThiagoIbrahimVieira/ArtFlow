@@ -39,17 +39,38 @@ export default async function handler(req: any, res: any) {
     const tokenData = await tokenRes.json();
     const accessToken = tokenData.access_token;
 
-    const queryText = (req.query.query as string) || '';
+    const queryText = ((req.query.query as string) || '').trim();
 
-    const daUrl = new URL('https://www.deviantart.com/api/v1/oauth2/browse/dailydeviations');
+    let daUrl: URL;
+    if (queryText) {
+      daUrl = new URL('https://www.deviantart.com/api/v1/oauth2/browse/popular');
+      daUrl.searchParams.append('q', queryText);
+    } else {
+      daUrl = new URL('https://www.deviantart.com/api/v1/oauth2/browse/dailydeviations');
+    }
+    daUrl.searchParams.append('limit', '24');
     daUrl.searchParams.append('with_session', 'false');
 
-    const daRes = await fetch(daUrl.toString(), {
+    let daRes = await fetch(daUrl.toString(), {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'User-Agent': 'ArtFlow/1.0',
       },
     });
+
+    if (!daRes.ok && queryText) {
+      // Fallback to newest browse if popular endpoint returns non-200
+      daUrl = new URL('https://www.deviantart.com/api/v1/oauth2/browse/newest');
+      daUrl.searchParams.append('q', queryText);
+      daUrl.searchParams.append('limit', '24');
+      daUrl.searchParams.append('with_session', 'false');
+      daRes = await fetch(daUrl.toString(), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'User-Agent': 'ArtFlow/1.0',
+        },
+      });
+    }
 
     if (!daRes.ok) {
       throw new Error(`DeviantArt API error ${daRes.status}`);
@@ -58,29 +79,19 @@ export default async function handler(req: any, res: any) {
     const daData = await daRes.json();
     const results = Array.isArray(daData.results) ? daData.results : [];
 
-    let items = results
-      .filter((item: any) => !item.is_mature && !item.is_nsfw && item.content?.src)
+    const items = results
+      .filter((item: any) => !item.is_mature && !item.is_nsfw && (item.content?.src || (item.thumbs && item.thumbs[0]?.src)))
       .map((item: any) => ({
-        id: item.deviationid,
-        title: item.title || 'DeviantArt Inspiration',
+        id: item.deviationid || String(Math.random()),
+        title: item.title || 'DeviantArt Artwork',
         artist: item.author?.username || 'DeviantArt Artist',
         artistProfileUrl: item.author?.profileurl || null,
-        thumbnailUrl: item.thumbs && item.thumbs[0] ? item.thumbs[0].src : item.content.src,
+        thumbnailUrl: item.content?.src || (item.thumbs && item.thumbs[0] ? item.thumbs[0].src : ''),
         sourceUrl: item.url || 'https://www.deviantart.com',
         category: item.category || 'Digital Art',
         width: item.content?.width || null,
         height: item.content?.height || null,
       }));
-
-    if (queryText) {
-      const qLower = queryText.toLowerCase();
-      items = items.filter(
-        (item: any) =>
-          item.title.toLowerCase().includes(qLower) ||
-          item.artist.toLowerCase().includes(qLower) ||
-          (item.category && item.category.toLowerCase().includes(qLower))
-      );
-    }
 
     return res.status(200).json({
       data: {
