@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { adminAuth } from '../lib/firebaseAdmin';
+import { getAdminAuth } from '../lib/firebaseAdmin';
 import { checkRateLimit } from '../lib/rateLimit';
 import {
   ColorMuseRequestSchema,
@@ -36,9 +36,17 @@ export default async function handler(req: any, res: any) {
   const idToken = authHeader.split(' ')[1];
   let uid: string;
   try {
+    const adminAuth = getAdminAuth();
     const decoded = await adminAuth.verifyIdToken(idToken);
     uid = decoded.uid;
-  } catch (e) {
+  } catch (e: any) {
+    const msg = e?.message || '';
+    if (msg.includes('variáveis') || msg.includes('FIREBASE') || msg.includes('not initialized')) {
+      return res.status(500).json({
+        data: null,
+        error: { code: 'CONFIG_ERROR', message: msg },
+      });
+    }
     return res.status(401).json({
       data: null,
       error: { code: 'AUTH_REQUIRED', message: 'Invalid or expired ID token.' },

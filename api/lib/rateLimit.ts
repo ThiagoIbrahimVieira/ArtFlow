@@ -1,4 +1,4 @@
-import { adminDb } from './firebaseAdmin';
+import { getAdminDb } from './firebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export async function checkRateLimit(uid: string): Promise<{ allowed: boolean; code?: string; message?: string }> {
@@ -6,11 +6,19 @@ export async function checkRateLimit(uid: string): Promise<{ allowed: boolean; c
     return { allowed: false, code: 'AUTH_REQUIRED', message: 'User ID missing.' };
   }
 
+  let db;
+  try {
+    db = getAdminDb();
+  } catch (err) {
+    // If Firestore Admin is unconfigured, allow request to proceed or mock
+    return { allowed: true };
+  }
+
   const now = Timestamp.now();
-  const docRef = adminDb.collection('rateLimits').doc(uid);
+  const docRef = db.collection('rateLimits').doc(uid);
 
   try {
-    await adminDb.runTransaction(async (t) => {
+    await db.runTransaction(async (t) => {
       const snap = await t.get(docRef);
       let hourlyStart = now;
       let dailyStart = now;
