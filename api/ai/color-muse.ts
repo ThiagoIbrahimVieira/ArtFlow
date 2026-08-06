@@ -4,7 +4,7 @@ import { checkRateLimit } from '../lib/rateLimit';
 import {
   ColorMuseRequestSchema,
   GeminiPaletteSchema,
-} from '../../functions/src/validation/schemas';
+} from '../lib/schemas';
 
 export default async function handler(req: any, res: any) {
   // 1. Method check: POST only
