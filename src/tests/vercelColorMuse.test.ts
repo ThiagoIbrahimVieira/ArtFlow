@@ -4,11 +4,11 @@ import handler from '../../api/ai/color-muse';
 const mockVerifyIdToken = vi.fn();
 
 // Mock verifyIdToken, firebaseAdmin, and rateLimit modules
-vi.mock('../../api/lib/verifyIdToken', () => ({
+vi.mock('../../api/lib/verifyIdToken.js', () => ({
   verifyFirebaseIdToken: (...args: any[]) => mockVerifyIdToken(...args),
 }));
 
-vi.mock('../../api/lib/firebaseAdmin', () => ({
+vi.mock('../../api/lib/firebaseAdmin.js', () => ({
   getFirebaseAdmin: () => ({
     auth: {
       verifyIdToken: mockVerifyIdToken,
@@ -17,11 +17,11 @@ vi.mock('../../api/lib/firebaseAdmin', () => ({
   }),
 }));
 
-vi.mock('../../api/lib/rateLimit', () => ({
+vi.mock('../../api/lib/rateLimit.js', () => ({
   checkRateLimit: vi.fn(),
 }));
 
-import { checkRateLimit } from '../../api/lib/rateLimit';
+import { checkRateLimit } from '../../api/lib/rateLimit.js';
 
 function createMockReqRes(method: string = 'POST', headers: Record<string, string> = {}, body: any = {}) {
   const req = {
