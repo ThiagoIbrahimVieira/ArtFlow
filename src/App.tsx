@@ -10,9 +10,9 @@ import { PalettesPage } from './pages/PalettesPage';
 import { ProfilePage } from './pages/ProfilePage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { authenticated, loading } = useAuth();
+  const { user, authLoading } = useAuth();
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#191715] flex flex-col items-center justify-center text-[#F1E2CB]">
         <div className="w-8 h-8 border-2 border-[#D9B98D] border-t-transparent rounded-full animate-spin mb-3" />
@@ -21,7 +21,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
 
-  if (!authenticated) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -29,9 +29,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { authenticated, loading } = useAuth();
+  const { user, authLoading, isSubmittingAuth } = useAuth();
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#191715] flex flex-col items-center justify-center text-[#F1E2CB]">
         <div className="w-8 h-8 border-2 border-[#D9B98D] border-t-transparent rounded-full animate-spin mb-3" />
@@ -40,7 +40,7 @@ const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
     );
   }
 
-  if (authenticated) {
+  if (user && !isSubmittingAuth) {
     return <Navigate to="/home" replace />;
   }
 

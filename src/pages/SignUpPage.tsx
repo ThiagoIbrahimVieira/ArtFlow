@@ -23,7 +23,7 @@ export const SignUpPage: React.FC = () => {
 
     try {
       await signUp({ displayName: fullName, email, password });
-      navigate('/home');
+      navigate('/home', { replace: true });
     } catch (err: any) {
       setError(err?.message || 'Failed to create account. Please check your inputs.');
     } finally {

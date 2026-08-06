@@ -25,7 +25,7 @@ export const LoginPage: React.FC = () => {
 
     try {
       await signIn(email, password);
-      navigate('/home');
+      navigate('/home', { replace: true });
     } catch (err: any) {
       setError(err?.message || 'Invalid email or password.');
     } finally {
