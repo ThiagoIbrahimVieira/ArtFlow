@@ -115,23 +115,30 @@ export const ReferencesPage: React.FC = () => {
     }
   };
 
+  const [savedDaIds, setSavedDaIds] = useState<Record<string, boolean>>({});
+
   const handleSaveDeviantArtReference = async (art: DeviantArtArtwork) => {
     if (!user) return;
     try {
+      setSavedDaIds((prev) => ({ ...prev, [art.id]: true }));
+      const targetCategory = (art.category && art.category !== 'All') 
+        ? art.category 
+        : (selectedCategory !== 'All' ? selectedCategory : 'General');
+
       const saved = await saveReference(user.uid, {
         title: art.title,
         imageUrl: art.thumbnailUrl,
         source: 'deviantart',
         sourceUrl: art.sourceUrl,
         artistName: art.artist,
-        category: art.category || selectedCategory !== 'All' ? selectedCategory : 'General',
+        category: targetCategory,
         bookmarked: true,
         deviantArtId: art.id,
       });
 
       setReferences((prev) => [saved, ...prev.filter((r) => r.id !== saved.id)]);
-      setIsDaModalOpen(false);
     } catch (err: any) {
+      setSavedDaIds((prev) => ({ ...prev, [art.id]: false }));
       alert(err?.message || 'Failed to save reference.');
     }
   };
@@ -398,9 +405,14 @@ export const ReferencesPage: React.FC = () => {
                         <p className="text-[10px] font-sans text-[#A99D8E] truncate">by {art.artist}</p>
                         <button
                           onClick={() => handleSaveDeviantArtReference(art)}
-                          className="mt-2 w-full py-1 text-[11px] bg-[#272320] border border-[#433D37] text-[#D9B98D] rounded-lg hover:bg-[#332E2A] transition-colors"
+                          disabled={Boolean(savedDaIds[art.id])}
+                          className={`mt-2 w-full py-1 text-[11px] rounded-lg transition-colors ${
+                            savedDaIds[art.id]
+                              ? 'bg-[#3A332C] text-[#E0C9A6] border border-[#52483E] cursor-default'
+                              : 'bg-[#272320] border border-[#433D37] text-[#D9B98D] hover:bg-[#332E2A]'
+                          }`}
                         >
-                          Save Reference
+                          {savedDaIds[art.id] ? 'Saved ✓' : 'Save Reference'}
                         </button>
                       </div>
                     </div>
