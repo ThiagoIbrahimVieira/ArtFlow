@@ -1,5 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
-
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -19,9 +17,7 @@ export default async function handler(req: any, res: any) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
   const { medium, subject, mood, baseColor, colorCount = 5 } = body;
 
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    const prompt = `Create a cohesive color palette for an artist working with:
+  const prompt = `Create a cohesive color palette for an artist working with:
 - Art Medium: ${medium || 'Digital Illustration'}
 - Subject: ${subject || 'Fantasy Character'}
 - Mood/Vibe: ${mood || 'Mystical & Warm'}
@@ -40,49 +36,59 @@ Return ONLY a valid JSON object matching this exact structure:
   "contrastNotes": ["Note 1", "Note 2"]
 }`;
 
-    let response;
-    const modelsToTry = [
-      process.env.GEMINI_MODEL,
-      'gemini-1.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-pro',
-    ].filter(Boolean) as string[];
+  const payload = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.7,
+      responseMimeType: 'application/json',
+    },
+  };
 
-    let lastError: any = null;
-    for (const model of modelsToTry) {
-      try {
-        response = await ai.models.generateContent({
-          model,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: {
-            temperature: 0.7,
-            responseMimeType: 'application/json',
-          },
-        });
-        if (response && response.text) break;
-      } catch (err: any) {
-        lastError = err;
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'];
+  let lastErrMessage = '';
+
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const apiRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await apiRes.json();
+      if (!apiRes.ok || json.error) {
+        lastErrMessage = json.error?.message || `Gemini API returned status ${apiRes.status}`;
+        if (apiRes.status === 403 || json.error?.status === 'PERMISSION_DENIED' || json.error?.code === 403) {
+          return res.status(403).json({
+            data: null,
+            error: {
+              code: 'PERMISSION_DENIED',
+              message: 'A sua chave GEMINI_API_KEY no painel da Vercel foi negada (403 Permission Denied). Crie uma nova chave gratuita em https://aistudio.google.com/app/apikey e atualize na Vercel.',
+            },
+          });
+        }
+        continue;
       }
-    }
 
-    if (!response || !response.text) {
-      throw lastError || new Error('Gemini API returned empty response.');
+      const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        const parsed = JSON.parse(text);
+        return res.status(200).json({
+          data: parsed,
+          error: null,
+        });
+      }
+    } catch (err: any) {
+      lastErrMessage = err?.message || 'Network error calling Gemini API';
     }
-
-    const parsed = JSON.parse(response.text);
-    return res.status(200).json({
-      data: parsed,
-      error: null,
-    });
-  } catch (err: any) {
-    console.error('Gemini Color Muse API Error:', err);
-    let userMsg = err?.message || 'Failed to generate palette with Gemini AI.';
-    if (userMsg.includes('403') || userMsg.includes('PERMISSION_DENIED')) {
-      userMsg = 'A sua chave GEMINI_API_KEY no painel da Vercel foi negada (403 Permission Denied). Verifique se a chave foi criada no Google AI Studio (https://aistudio.google.com/app/apikey) e se está ativa.';
-    }
-    return res.status(500).json({
-      data: null,
-      error: { code: 'AI_ERROR', message: userMsg },
-    });
   }
+
+  return res.status(500).json({
+    data: null,
+    error: {
+      code: 'AI_ERROR',
+      message: lastErrMessage || 'Failed to generate palette with Gemini AI.',
+    },
+  });
 }

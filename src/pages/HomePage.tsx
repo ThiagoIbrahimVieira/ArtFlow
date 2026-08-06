@@ -26,34 +26,51 @@ export const HomePage: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    async function loadHomeData() {
-      if (!user) return;
-      try {
-        const [fetchedProjects, fetchedReferences, fetchedPalettes] = await Promise.all([
-          listProjects(user.uid),
-          listReferences(user.uid),
-          listPalettes(user.uid),
-        ]);
 
-        if (isMounted) {
-          setProjects(fetchedProjects.length > 0 ? fetchedProjects.slice(0, 2) : MOCK_PROJECTS.slice(3, 5));
-          setReferences(fetchedReferences.length > 0 ? fetchedReferences.slice(0, 2) : MOCK_REFERENCES.slice(0, 2));
-          setPalettes(fetchedPalettes.length > 0 ? fetchedPalettes : MOCK_PALETTES);
-        }
-      } catch (err) {
-        console.error('Error loading home data:', err);
-        if (isMounted) {
-          setProjects(MOCK_PROJECTS.slice(3, 5));
-          setReferences(MOCK_REFERENCES.slice(0, 2));
-          setPalettes(MOCK_PALETTES);
-        }
-      } finally {
+    // Safety fallback timer so UI never gets stuck on "Loading..."
+    const timer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 800);
+
+    async function loadHomeData() {
+      if (!user) {
         if (isMounted) setLoading(false);
+        return;
       }
+      
+      // Load projects, references, palettes concurrently without blocking each other
+      listProjects(user.uid)
+        .then((res) => {
+          if (isMounted) setProjects(res.length > 0 ? res.slice(0, 2) : MOCK_PROJECTS.slice(3, 5));
+        })
+        .catch(() => {
+          if (isMounted) setProjects(MOCK_PROJECTS.slice(3, 5));
+        });
+
+      listReferences(user.uid)
+        .then((res) => {
+          if (isMounted) setReferences(res.length > 0 ? res.slice(0, 2) : MOCK_REFERENCES.slice(0, 2));
+        })
+        .catch(() => {
+          if (isMounted) setReferences(MOCK_REFERENCES.slice(0, 2));
+        });
+
+      listPalettes(user.uid)
+        .then((res) => {
+          if (isMounted) setPalettes(res.length > 0 ? res : MOCK_PALETTES);
+        })
+        .catch(() => {
+          if (isMounted) setPalettes(MOCK_PALETTES);
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
     }
+
     loadHomeData();
     return () => {
       isMounted = false;
+      clearTimeout(timer);
     };
   }, [user]);
 
