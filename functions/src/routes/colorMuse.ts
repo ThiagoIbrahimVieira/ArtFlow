@@ -1,12 +1,12 @@
 // src/routes/colorMuse.ts
 import { Router, Request, Response } from 'express';
-import { ColorMuseRequestSchema } from '../validation/schemas';
-import { generatePalette } from '../services/colorMuseService';
-import { ApiSuccess, ApiError } from '../types/api';
+import { ColorMuseRequestSchema } from '../validation/schemas.js';
+import { generatePalette } from '../services/colorMuseService.js';
+import { ApiSuccess, ApiError } from '../types/api.js';
 
 export const colorMuseRouter = Router();
 
-colorMuseRouter.post('/color-palette', async (req: Request, res: Response) => {
+colorMuseRouter.post(['/color-palette', '/color-muse'], async (req: Request, res: Response) => {
   const parseResult = ColorMuseRequestSchema.safeParse(req.body);
   if (!parseResult.success) {
     const error: ApiError = { code: 'VALIDATION_ERROR', message: parseResult.error.message };

@@ -1,8 +1,8 @@
 // src/routes/deviantArt.ts
 import { Router, Request, Response } from 'express';
-import { DeviantArtQuerySchema } from '../validation/schemas';
-import { fetchDailyDeviations } from '../services/deviantArtService';
-import { ApiSuccess, ApiError } from '../types/api';
+import { DeviantArtQuerySchema } from '../validation/schemas.js';
+import { fetchDailyDeviations } from '../services/deviantArtService.js';
+import { ApiSuccess, ApiError } from '../types/api.js';
 
 export const deviantArtRouter = Router();
 

@@ -1,6 +1,6 @@
 // src/services/deviantArtService.ts
 import { z } from 'zod';
-import { DeviantArtQuery } from '../validation/schemas';
+import { DeviantArtQuery } from '../validation/schemas.js';
 // No explicit import needed – Node 22 provides global fetch
 
 interface TokenInfo {

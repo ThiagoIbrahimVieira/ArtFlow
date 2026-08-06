@@ -1,7 +1,7 @@
 // src/routes/deviantArt.ts
 import { Router } from 'express';
-import { DeviantArtQuerySchema } from '../validation/schemas';
-import { fetchDailyDeviations } from '../services/deviantArtService';
+import { DeviantArtQuerySchema } from '../validation/schemas.js';
+import { fetchDailyDeviations } from '../services/deviantArtService.js';
 export const deviantArtRouter = Router();
 deviantArtRouter.get('/', async (req, res) => {
     const parseResult = DeviantArtQuerySchema.safeParse(req.query);

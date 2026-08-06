@@ -1,17 +1,18 @@
-import admin from 'firebase-admin';
-import { getAuth, getFirestore } from 'firebase-admin/auth';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin SDK
-if (!admin.apps.length) {
-  // Expect service account JSON path in env var
+if (!getApps().length) {
   const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
   if (!serviceAccountPath) {
     throw new Error('FIREBASE_SERVICE_ACCOUNT_PATH env variable not set');
   }
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccountPath),
+  initializeApp({
+    credential: cert(serviceAccountPath),
   });
 }
 
 export const auth = getAuth();
 export const db = getFirestore();
+

@@ -1,7 +1,7 @@
 // src/services/colorMuseService.ts
 import { GoogleGenAI } from '@google/genai';
-import { ColorMuseRequest, GeminiPaletteSchema } from '../validation/schemas';
-import { adminAuth } from '../lib/firebaseAdmin'; // for future auth checks if needed
+import { ColorMuseRequest, GeminiPaletteSchema } from '../validation/schemas.js';
+import { adminAuth } from '../lib/firebaseAdmin.js'; // for future auth checks if needed
 
 /**
  * Generate a color palette using Gemini.
@@ -14,11 +14,18 @@ export async function generatePalette(request: ColorMuseRequest): Promise<any> {
   }
 
   const client = new GoogleGenAI({ apiKey });
-  // Use a configurable model; default to 'gemini-1.5-flash-001' if not set via env
-  const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash-001';
+  // Use a configurable model; default to 'gemini-3.6-flash' if not set via env
+  const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+  const promptText = request.prompt || [
+    request.medium ? `Art Medium: ${request.medium}` : '',
+    request.subject ? `Subject: ${request.subject}` : '',
+    request.mood ? `Mood: ${request.mood}` : '',
+    request.baseColor ? `Base Color: ${request.baseColor}` : '',
+  ].filter(Boolean).join(', ');
+
   const result = await client.models.generateContent({
     model: modelName,
-    contents: [{ role: 'user', parts: [{ text: `Create a color palette based on the following description:\n\"${request.prompt}\"\nYou must output a JSON object matching this schema:\n${JSON.stringify(GeminiPaletteSchema.shape, null, 2)}\nThe palette must contain exactly ${request.colorCount} colors. Each color object must have a HEX string (uppercase, # prefix), a short name, and a role description. Also include a paletteName, description, harmony, usageTips, and contrastNotes. Do not add any extra fields.` }] }],
+    contents: [{ role: 'user', parts: [{ text: `Create a color palette based on the following description:\n\"${promptText}\"\nYou must output a JSON object matching this schema:\n${JSON.stringify(GeminiPaletteSchema.shape, null, 2)}\nThe palette must contain exactly ${request.colorCount} colors. Each color object must have a HEX string (uppercase, # prefix), a short name, and a role description. Also include a paletteName, description, harmony, usageTips, and contrastNotes. Do not add any extra fields.` }] }],
     config: {
       temperature: 0.7,
       topK: 40,

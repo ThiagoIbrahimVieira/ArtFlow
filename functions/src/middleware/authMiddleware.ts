@@ -1,6 +1,6 @@
 // src/middleware/authMiddleware.ts
 import { Request, Response, NextFunction } from 'express';
-import { adminAuth } from '../lib/firebaseAdmin';
+import { adminAuth } from '../lib/firebaseAdmin.js';
 
 // Extend Express Request type with uid property
 export interface AuthenticatedRequest extends Request {

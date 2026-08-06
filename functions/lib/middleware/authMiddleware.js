@@ -1,4 +1,4 @@
-import { adminAuth } from '../lib/firebaseAdmin';
+import { adminAuth } from '../lib/firebaseAdmin.js';
 /**
  * Firebase ID‑token authentication middleware.
  * Expects `Authorization: Bearer <ID_TOKEN>` header.

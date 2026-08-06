@@ -1,4 +1,4 @@
-import { adminDb } from '../lib/firebaseAdmin';
+import { adminDb } from '../lib/firebaseAdmin.js';
 import { Timestamp } from 'firebase-admin/firestore';
 /**
  * Persistent per‑user rate limiting using Firestore transaction.

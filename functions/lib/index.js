@@ -3,10 +3,10 @@ import express from 'express';
 import cors from 'cors';
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
-import { deviantArtRouter } from './routes/deviantArt';
-import { colorMuseRouter } from './routes/colorMuse';
-import { authMiddleware } from './middleware/authMiddleware';
-import { rateLimitMiddleware } from './middleware/rateLimit';
+import { deviantArtRouter } from './routes/deviantArt.js';
+import { colorMuseRouter } from './routes/colorMuse.js';
+import { authMiddleware } from './middleware/authMiddleware.js';
+import { rateLimitMiddleware } from './middleware/rateLimit.js';
 // Secrets (will be bound in deployment, available via process.env in emulators)
 export const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 export const DEVIANTART_CLIENT_ID = defineSecret('DEVIANTART_CLIENT_ID');
@@ -20,12 +20,12 @@ app.use((req, _res, next) => {
     next();
 });
 // Health check
-app.get('/api/health', (_req, res) => {
+app.get(['/health', '/api/health'], (_req, res) => {
     res.json({ data: { status: 'ok', timestamp: new Date().toISOString() }, error: null });
 });
 // Protected routes
-app.use('/api/deviantart', authMiddleware, deviantArtRouter);
-app.use('/api/ai', authMiddleware, rateLimitMiddleware, colorMuseRouter);
+app.use(['/deviantart', '/api/deviantart'], authMiddleware, deviantArtRouter);
+app.use(['/ai', '/api/ai'], authMiddleware, rateLimitMiddleware, colorMuseRouter);
 // 404 handler
 app.use((_req, res) => {
     res.status(404).json({ data: null, error: { code: 'RESOURCE_NOT_FOUND', message: 'Requested API endpoint does not exist.' } });

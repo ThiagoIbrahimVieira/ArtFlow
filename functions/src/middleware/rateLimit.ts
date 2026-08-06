@@ -1,7 +1,7 @@
 // src/middleware/rateLimit.ts
 import { Request, Response, NextFunction } from 'express';
-import { adminDb } from '../lib/firebaseAdmin';
-import { AuthenticatedRequest } from './authMiddleware';
+import { adminDb } from '../lib/firebaseAdmin.js';
+import { AuthenticatedRequest } from './authMiddleware.js';
 import { Timestamp, Firestore } from 'firebase-admin/firestore';
 
 /**

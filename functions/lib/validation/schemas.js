@@ -9,8 +9,14 @@ export const DeviantArtQuerySchema = z.object({
 });
 // Color Muse request body
 export const ColorMuseRequestSchema = z.object({
-    prompt: z.string().min(1).max(500),
+    medium: z.string().min(1).max(200).optional(),
+    subject: z.string().min(1).max(200).optional(),
+    mood: z.string().min(1).max(200).optional(),
+    baseColor: z.string().regex(/^#([A-Fa-f0-9]{6})$/).optional().or(z.literal('')),
+    prompt: z.string().min(1).max(500).optional(),
     colorCount: z.number().int().min(1).max(10),
+}).refine((data) => Boolean(data.prompt || data.medium || data.subject || data.mood), {
+    message: 'At least prompt or one of (medium, subject, mood) must be provided.',
 });
 // Gemini palette response schema (post‑validation)
 export const GeminiPaletteSchema = z.object({
