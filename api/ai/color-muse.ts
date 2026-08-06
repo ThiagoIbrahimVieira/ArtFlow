@@ -1,9 +1,9 @@
-import { getAdminAuth } from '../lib/firebaseAdmin';
-import { checkRateLimit } from '../lib/rateLimit';
+import { getAdminAuth } from '../lib/firebaseAdmin.js';
+import { checkRateLimit } from '../lib/rateLimit.js';
 import {
   ColorMuseRequestSchema,
   GeminiPaletteSchema,
-} from '../lib/schemas';
+} from '../lib/schemas.js';
 
 export default async function handler(req: any, res: any) {
   // 1. Method check: POST only

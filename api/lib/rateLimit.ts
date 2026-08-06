@@ -1,4 +1,4 @@
-import { getAdminDb } from './firebaseAdmin';
+import { getAdminDb } from './firebaseAdmin.js';
 
 export async function checkRateLimit(uid: string): Promise<{ allowed: boolean; code?: string; message?: string }> {
   if (!uid) {
