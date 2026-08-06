@@ -6,11 +6,33 @@ let adminAuthInstance: Auth | null = null;
 let adminDbInstance: Firestore | null = null;
 let initError: string | null = null;
 
+function normalizePrivateKey(key: string): string {
+  if (!key) return '';
+  let cleaned = key.trim();
+
+  // Strip leading and trailing quotes if pasted with quotes
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+
+  // Replace literal '\n' sequences with real newlines
+  cleaned = cleaned.replace(/\\n/g, '\n');
+
+  // Strip carriage returns
+  cleaned = cleaned.replace(/\r/g, '');
+
+  return cleaned;
+}
+
 function initFirebaseAdmin() {
   if (getApps().length > 0) {
     try {
-      adminAuthInstance = getAuth();
-      adminDbInstance = getFirestore();
+      const app = getApps()[0];
+      adminAuthInstance = getAuth(app);
+      adminDbInstance = getFirestore(app);
     } catch (e: any) {
       initError = e.message;
     }
@@ -23,18 +45,18 @@ function initFirebaseAdmin() {
 
   if (projectId && clientEmail && rawPrivateKey) {
     try {
-      const privateKey = rawPrivateKey.replace(/\\n/g, '\n');
+      const privateKey = normalizePrivateKey(rawPrivateKey);
       const app = initializeApp({
         credential: cert({
-          projectId,
-          clientEmail,
+          projectId: projectId.trim(),
+          clientEmail: clientEmail.trim(),
           privateKey,
         }),
       });
       adminAuthInstance = getAuth(app);
       adminDbInstance = getFirestore(app);
     } catch (err: any) {
-      initError = `Firebase Admin cert initialization error: ${err.message}`;
+      initError = `Firebase Admin cert error: ${err.message}`;
     }
   } else {
     try {

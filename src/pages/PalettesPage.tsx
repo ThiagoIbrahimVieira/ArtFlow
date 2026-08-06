@@ -92,7 +92,9 @@ export const PalettesPage: React.FC = () => {
 
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
-        throw new Error('Serviço da IA Gemini (Backend Cloud Functions) ainda não publicado na Vercel.');
+        const text = await res.text().catch(() => '');
+        console.error('Non-JSON response from Color Muse server:', res.status, text);
+        throw new Error(`Erro no servidor da IA Gemini (Status ${res.status}). Por favor, verifique o Redeploy na Vercel.`);
       }
 
       const json = await res.json();
