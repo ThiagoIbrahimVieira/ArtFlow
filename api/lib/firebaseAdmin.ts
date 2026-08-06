@@ -1,9 +1,5 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth, Auth } from 'firebase-admin/auth';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
-
-let adminAuthInstance: Auth | null = null;
-let adminDbInstance: Firestore | null = null;
+let adminAuthInstance: any = null;
+let adminDbInstance: any = null;
 let initError: string | null = null;
 
 function normalizePrivateKey(key: string): string {
@@ -28,23 +24,26 @@ function normalizePrivateKey(key: string): string {
 }
 
 function initFirebaseAdmin() {
-  if (getApps().length > 0) {
-    try {
+  if (adminAuthInstance && adminDbInstance) return;
+
+  try {
+    // Dynamic require so module load never crashes Vercel function startup
+    const { initializeApp, getApps, cert } = require('firebase-admin/app');
+    const { getAuth } = require('firebase-admin/auth');
+    const { getFirestore } = require('firebase-admin/firestore');
+
+    if (getApps().length > 0) {
       const app = getApps()[0];
       adminAuthInstance = getAuth(app);
       adminDbInstance = getFirestore(app);
-    } catch (e: any) {
-      initError = e.message;
+      return;
     }
-    return;
-  }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-  if (projectId && clientEmail && rawPrivateKey) {
-    try {
+    if (projectId && clientEmail && rawPrivateKey) {
       const privateKey = normalizePrivateKey(rawPrivateKey);
       const app = initializeApp({
         credential: cert({
@@ -55,36 +54,26 @@ function initFirebaseAdmin() {
       });
       adminAuthInstance = getAuth(app);
       adminDbInstance = getFirestore(app);
-    } catch (err: any) {
-      initError = `Firebase Admin cert error: ${err.message}`;
-    }
-  } else {
-    try {
-      const app = initializeApp();
-      adminAuthInstance = getAuth(app);
-      adminDbInstance = getFirestore(app);
-    } catch (err: any) {
+    } else {
       initError = 'Variáveis do Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) não foram configuradas nas Environment Variables da Vercel.';
     }
+  } catch (err: any) {
+    initError = `Erro de inicialização do Firebase Admin: ${err.message}`;
   }
 }
 
-export function getAdminAuth(): Auth {
+export function getAdminAuth(): any {
+  initFirebaseAdmin();
   if (!adminAuthInstance) {
-    initFirebaseAdmin();
-  }
-  if (!adminAuthInstance) {
-    throw new Error(initError || 'Firebase Admin Auth is not initialized.');
+    throw new Error(initError || 'Firebase Admin Auth não foi inicializado.');
   }
   return adminAuthInstance;
 }
 
-export function getAdminDb(): Firestore {
+export function getAdminDb(): any {
+  initFirebaseAdmin();
   if (!adminDbInstance) {
-    initFirebaseAdmin();
-  }
-  if (!adminDbInstance) {
-    throw new Error(initError || 'Firebase Admin Firestore is not initialized.');
+    throw new Error(initError || 'Firebase Admin Firestore não foi inicializado.');
   }
   return adminDbInstance;
 }
