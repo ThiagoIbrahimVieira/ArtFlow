@@ -6,6 +6,7 @@ import { PaletteCard } from '../components/PaletteCard';
 import { MOCK_PALETTES } from '../data/mockData';
 import { Palette, ColorMuseResponse } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { apiFetch } from '../lib/apiClient';
 import {
   listPalettes,
   saveGeneratedPalette,
@@ -74,7 +75,7 @@ export const PalettesPage: React.FC = () => {
 
     try {
       const idToken = await user.getIdToken();
-      const res = await fetch('/api/ai/color-palette', {
+      const res = await apiFetch('/api/ai/color-muse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
