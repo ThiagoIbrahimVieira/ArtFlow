@@ -4,6 +4,7 @@ import {
   ColorMuseRequestSchema,
   GeminiPaletteSchema,
 } from '../lib/colorMuseSchemas';
+import { verifyFirebaseIdToken } from '../lib/verifyIdToken';
 
 export default async function handler(req: any, res: any) {
   // 1. Method check: POST only
@@ -23,23 +24,14 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // 3. Initialize Firebase Admin lazily inside handler
-  let adminAuth: any;
-  let adminDb: any;
-
-  try {
-    const firebaseAdmin = getFirebaseAdmin();
-    adminAuth = firebaseAdmin.auth;
-    adminDb = firebaseAdmin.db;
-  } catch (error: any) {
-    console.error("Firebase Admin configuration failed:", error?.message || error);
-
+  // 3. Environment check
+  const projectId = process.env.FIREBASE_PROJECT_ID?.replace(/^["']|["']$/g, '').trim();
+  if (!projectId) {
     return res.status(500).json({
       data: null,
       error: {
         code: "FIREBASE_ADMIN_CONFIG_ERROR",
-        message:
-          "A configuração do servidor Firebase está inválida.",
+        message: "A configuração do servidor Firebase está inválida (FIREBASE_PROJECT_ID ausente).",
       },
     });
   }
@@ -56,18 +48,24 @@ export default async function handler(req: any, res: any) {
   const idToken = authHeader.split(' ')[1];
   let uid: string;
   try {
-    const decoded = await adminAuth.verifyIdToken(idToken);
-    uid = decoded.uid;
+    const verified = await verifyFirebaseIdToken(idToken, projectId);
+    uid = verified.uid;
   } catch (e: any) {
-    const msg = e?.message || '';
-    console.error('verifyIdToken failed:', msg);
+    console.error('verifyFirebaseIdToken failed:', e?.message || e);
     return res.status(401).json({
       data: null,
       error: { code: 'AUTH_REQUIRED', message: 'Invalid or expired ID token.' },
     });
   }
 
-  // 5. Rate-limit check (App rate limit)
+  // 5. Rate-limit check (App rate limit via Firestore Admin if initialized)
+  let adminDb: any = null;
+  try {
+    adminDb = getFirebaseAdmin().db;
+  } catch (err) {
+    // Admin DB uninitialized
+  }
+
   const rateLimitResult = await checkRateLimit(uid, adminDb);
   if (!rateLimitResult.allowed) {
     return res.status(429).json({

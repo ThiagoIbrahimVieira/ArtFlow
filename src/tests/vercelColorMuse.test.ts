@@ -3,7 +3,11 @@ import handler from '../../api/ai/color-muse';
 
 const mockVerifyIdToken = vi.fn();
 
-// Mock firebaseAdmin and rateLimit modules
+// Mock verifyIdToken, firebaseAdmin, and rateLimit modules
+vi.mock('../../api/lib/verifyIdToken', () => ({
+  verifyFirebaseIdToken: (...args: any[]) => mockVerifyIdToken(...args),
+}));
+
 vi.mock('../../api/lib/firebaseAdmin', () => ({
   getFirebaseAdmin: () => ({
     auth: {
@@ -88,7 +92,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
 
   it('4. Invalid payload returns 400', async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-    const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { colorCount: 999 }); // missing required fields
+    const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { colorCount: 999 });
     await handler(req, res);
     expect(res.getStatusCode()).toBe(400);
     expect(res.getResponse()?.error?.code).toBe('VALIDATION_ERROR');
