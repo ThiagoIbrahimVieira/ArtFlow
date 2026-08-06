@@ -40,6 +40,7 @@ export default async function handler(req: any, res: any) {
     uid = decoded.uid;
   } catch (e: any) {
     const msg = e?.message || '';
+    console.error('verifyIdToken failed:', msg);
     if (msg.includes('variáveis') || msg.includes('FIREBASE') || msg.includes('not initialized')) {
       return res.status(500).json({
         data: null,
@@ -48,7 +49,7 @@ export default async function handler(req: any, res: any) {
     }
     return res.status(401).json({
       data: null,
-      error: { code: 'AUTH_REQUIRED', message: 'Invalid or expired ID token.' },
+      error: { code: 'AUTH_REQUIRED', message: `Invalid or expired ID token: ${msg}` },
     });
   }
 
