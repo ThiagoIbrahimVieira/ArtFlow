@@ -43,8 +43,9 @@ export default async function handler(req: any, res: any) {
 
     let daUrl: URL;
     if (queryText) {
-      daUrl = new URL('https://www.deviantart.com/api/v1/oauth2/browse/popular');
-      daUrl.searchParams.append('q', queryText);
+      const cleanTag = queryText.toLowerCase().replace(/[^a-z0-9]/g, '');
+      daUrl = new URL('https://www.deviantart.com/api/v1/oauth2/browse/tags');
+      daUrl.searchParams.append('tag', cleanTag || 'art');
     } else {
       daUrl = new URL('https://www.deviantart.com/api/v1/oauth2/browse/dailydeviations');
     }
@@ -58,10 +59,9 @@ export default async function handler(req: any, res: any) {
       },
     });
 
-    if (!daRes.ok && queryText) {
-      // Fallback to newest browse if popular endpoint returns non-200
-      daUrl = new URL('https://www.deviantart.com/api/v1/oauth2/browse/newest');
-      daUrl.searchParams.append('q', queryText);
+    if (!daRes.ok) {
+      // Fallback to dailydeviations if tag search endpoint returns error or 404
+      daUrl = new URL('https://www.deviantart.com/api/v1/oauth2/browse/dailydeviations');
       daUrl.searchParams.append('limit', '24');
       daUrl.searchParams.append('with_session', 'false');
       daRes = await fetch(daUrl.toString(), {

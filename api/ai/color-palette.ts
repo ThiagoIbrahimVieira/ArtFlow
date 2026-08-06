@@ -40,14 +40,27 @@ Return ONLY a valid JSON object matching this exact structure:
   "contrastNotes": ["Note 1", "Note 2"]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash-001',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        temperature: 0.7,
-        responseMimeType: 'application/json',
-      },
-    });
+    let response;
+    const modelCandidate = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    try {
+      response = await ai.models.generateContent({
+        model: modelCandidate,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          temperature: 0.7,
+          responseMimeType: 'application/json',
+        },
+      });
+    } catch (modelErr) {
+      response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          temperature: 0.7,
+          responseMimeType: 'application/json',
+        },
+      });
+    }
 
     const text = response.text;
     if (!text) {
