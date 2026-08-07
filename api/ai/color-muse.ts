@@ -1,10 +1,10 @@
-import { getFirebaseAdmin } from '../_lib/firebaseAdmin';
-import { checkRateLimit } from '../_lib/rateLimit';
+import { getFirebaseAdmin } from '../lib/firebaseAdmin';
+import { checkRateLimit } from '../lib/rateLimit';
 import {
   ColorMuseRequestSchema,
   GeminiPaletteSchema,
-} from '../_lib/colorMuseSchemas';
-import { verifyFirebaseIdToken } from '../_lib/verifyIdToken';
+} from '../lib/colorMuseSchemas';
+import { verifyFirebaseIdToken } from '../lib/verifyIdToken';
 
 export default async function handler(req: any, res: any) {
   // 1. Method check: POST only
