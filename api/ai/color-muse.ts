@@ -115,7 +115,7 @@ export default async function handler(req: any, res: any) {
   }
 
   // 8. Call Gemini AI via native REST API (fetch)
-  const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const promptText = [
     requestData.medium ? `Art Medium: ${requestData.medium}` : '',
     requestData.subject ? `Subject: ${requestData.subject}` : '',
