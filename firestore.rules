@@ -12,9 +12,7 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow create: if isOwner(uid);
-      allow read: if isOwner(uid);
-      allow update: if isOwner(uid);
+      allow create, read, update: if isOwner(uid);
       allow delete: if false;
 
       match /projects/{projectId} {
@@ -28,6 +26,22 @@ service cloud.firestore {
       match /palettes/{paletteId} {
         allow read, create, update, delete: if isOwner(uid);
       }
+    }
+
+    match /projects/{projectId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /references/{referenceId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /palettes/{paletteId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /rateLimits/{uid} {
+      allow read, write: if false;
     }
   }
 }
