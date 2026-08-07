@@ -13,6 +13,131 @@ import {
   createPalette,
 } from '../services/paletteService';
 
+function hslToHex(h: number, s: number, l: number): string {
+  s /= 100;
+  l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+}
+
+const ColorWheelInput: React.FC<{
+  value: string;
+  onChange: (val: string) => void;
+}> = ({ value, onChange }) => {
+  const [showWheel, setShowWheel] = useState(false);
+  const colorPickerRef = React.useRef<HTMLInputElement>(null);
+  const wheelRef = React.useRef<HTMLDivElement>(null);
+
+  const isValidHex = /^#([A-Fa-f0-9]{6})$/.test(value);
+  const displayColor = isValidHex ? value.toUpperCase() : '#D9B98D';
+
+  const handleWheelClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!wheelRef.current) return;
+    const rect = wheelRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const x = e.clientX - rect.left - centerX;
+    const y = e.clientY - rect.top - centerY;
+
+    const angleRad = Math.atan2(y, x);
+    let angleDeg = (angleRad * 180) / Math.PI + 90;
+    if (angleDeg < 0) angleDeg += 360;
+
+    const dist = Math.sqrt(x * x + y * y);
+    const maxRadius = rect.width / 2;
+    const satPercent = Math.min(100, Math.round((dist / maxRadius) * 100));
+
+    const newHex = hslToHex(angleDeg, satPercent, 50);
+    onChange(newHex);
+  };
+
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setShowWheel(!showWheel)}
+          title="Open Color Circle Wheel"
+          className="relative w-8 h-8 rounded-full overflow-hidden border border-[#433D37] hover:border-[#D9B98D] transition-all shadow-md flex items-center justify-center shrink-0 group focus:outline-none focus:ring-1 focus:ring-[#D9B98D]"
+          style={{
+            background: isValidHex
+              ? displayColor
+              : 'conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)',
+          }}
+        >
+          <div className="absolute inset-0 rounded-full border border-white/20 pointer-events-none" />
+        </button>
+
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="#HEX"
+            value={value}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+            className="w-full px-2.5 py-1.5 text-xs bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] font-mono uppercase focus:border-[#D9B98D] outline-none"
+          />
+          <input
+            ref={colorPickerRef}
+            type="color"
+            value={isValidHex ? displayColor : '#D9B98D'}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+            className="sr-only"
+          />
+        </div>
+      </div>
+
+      {showWheel && (
+        <div className="absolute left-0 top-10 z-40 bg-[#272320] border border-[#433D37] p-3 rounded-2xl shadow-2xl flex flex-col items-center gap-2 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between w-full text-[11px] text-[#A99D8E] font-medium">
+            <span>Color Circle Wheel</span>
+            <button
+              type="button"
+              onClick={() => setShowWheel(false)}
+              className="hover:text-[#F1E2CB] text-xs px-1"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div
+            ref={wheelRef}
+            onClick={handleWheelClick}
+            className="relative w-32 h-32 rounded-full cursor-crosshair border-2 border-[#3A332C] shadow-lg overflow-hidden shrink-0 transition-transform active:scale-95"
+            style={{
+              background: `
+                radial-gradient(circle at center, #ffffff 0%, transparent 70%),
+                conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)
+              `,
+            }}
+          >
+            <div className="absolute inset-0 rounded-full border border-black/10 pointer-events-none" />
+          </div>
+
+          <div className="flex items-center gap-2 w-full pt-1.5 border-t border-[#3A332C]">
+            <div
+              className="w-5 h-5 rounded-md border border-[#433D37]"
+              style={{ backgroundColor: displayColor }}
+            />
+            <span className="text-[11px] font-mono text-[#F1E2CB] flex-1">{displayColor}</span>
+            <button
+              type="button"
+              onClick={() => colorPickerRef.current?.click()}
+              className="text-[10px] text-[#D9B98D] underline hover:text-[#E8DAC7]"
+            >
+              More...
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const PalettesPage: React.FC = () => {
   const { user } = useAuth();
   const [palettes, setPalettes] = useState<Palette[]>([]);
@@ -300,13 +425,7 @@ export const PalettesPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-sans text-[#A99D8E] mb-1">Base Color (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="#HEX"
-                      value={baseColor}
-                      onChange={(e) => setBaseColor(e.target.value)}
-                      className="w-full px-3 py-2 text-xs bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB]"
-                    />
+                    <ColorWheelInput value={baseColor} onChange={setBaseColor} />
                   </div>
                   <div>
                     <label className="block text-xs font-sans text-[#A99D8E] mb-1">Color Count (3-8)</label>

@@ -126,19 +126,12 @@ export default async function handler(req: any, res: any) {
   try {
     const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     const payload = {
-      systemInstruction: {
-        parts: [
-          {
-            text: 'You are Color Muse, a world-class master painter, color theorist, and artistic consultant. Your expertise spans color theory (analogous, complementary, triadic), lighting value, pigment interaction, and mood resonance for traditional and digital art media. You act purely as a master artist tool. Never output intro text, conversational commentary, or explanations outside JSON. Output ONLY pure JSON representing the requested color palette.',
-          },
-        ],
-      },
       contents: [
         {
           role: 'user',
           parts: [
             {
-              text: `Artistic Request:\n- Art Medium: ${requestData.medium || 'Any'}\n- Subject / Theme: ${requestData.subject || 'Creative Work'}\n- Mood & Vibe: ${requestData.mood || 'Expressive'}\n- Base Color Hint: ${requestData.baseColor || 'None'}\n- Required Color Count: Exactly ${requestData.colorCount} colors.\n\nGenerate a harmonious, professional palette as pure JSON matching this exact structure:\n{\n  "paletteName": "Evocative Palette Name",\n  "description": "Concise artist note on light, mood, and color interaction (1 sentence)",\n  "harmony": "Color Theory Harmony Type (e.g. Split-Complementary, Monochromatic, Triadic, Warm Analogous)",\n  "colors": [\n    {\n      "hex": "#HEX6DIGITS",\n      "name": "Evocative Color Name",\n      "role": "Artistic Role (e.g. Primary Mass Tone, Ambient Shadow, Highlight Accent, Midtone Transition)"\n    }\n  ],\n  "usageTips": ["Practical advice on value grouping and pigment placement"],\n  "contrastNotes": ["Technical advice on value separation and focal contrast"]\n}\nThe "colors" array MUST contain exactly ${requestData.colorCount} colors. Every "hex" value MUST be an uppercase 6-digit hex code with a leading # (e.g. #E07A5F).`,
+              text: `System Persona: You are Color Muse, a world-class master painter, color theorist, and artistic consultant. Your expertise spans color theory (analogous, complementary, triadic), lighting value, pigment interaction, and mood resonance for traditional and digital art media. Act strictly as a master artist tool. Never output intro text, conversational commentary, or explanations outside JSON. Output ONLY pure JSON representing the requested color palette.\n\nArtistic Request:\n- Art Medium: ${requestData.medium || 'Any'}\n- Subject / Theme: ${requestData.subject || 'Creative Work'}\n- Mood & Vibe: ${requestData.mood || 'Expressive'}\n- Base Color Hint: ${requestData.baseColor || 'None'}\n- Required Color Count: Exactly ${requestData.colorCount} colors.\n\nGenerate a harmonious, professional palette as pure JSON matching this exact structure:\n{\n  "paletteName": "Evocative Palette Name",\n  "description": "Concise artist note on light, mood, and color interaction (1 sentence)",\n  "harmony": "Color Theory Harmony Type (e.g. Split-Complementary, Monochromatic, Triadic, Warm Analogous)",\n  "colors": [\n    {\n      "hex": "#HEX6DIGITS",\n      "name": "Evocative Color Name",\n      "role": "Artistic Role (e.g. Primary Mass Tone, Ambient Shadow, Highlight Accent, Midtone Transition)"\n    }\n  ],\n  "usageTips": ["Practical advice on value grouping and pigment placement"],\n  "contrastNotes": ["Technical advice on value separation and focal contrast"]\n}\nThe "colors" array MUST contain exactly ${requestData.colorCount} colors. Every "hex" value MUST be an uppercase 6-digit hex code with a leading # (e.g. #E07A5F).`,
             },
           ],
         },
