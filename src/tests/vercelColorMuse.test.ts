@@ -4,21 +4,21 @@ import handler from '../../api/ai/color-muse';
 const mockVerifyIdToken = vi.fn();
 
 // Mock verifyIdToken, firebaseAdmin, and rateLimit modules
-vi.mock('../../api/lib/verifyIdToken.js', () => ({
+vi.mock('../../api/_lib/verifyIdToken.js', () => ({
   verifyFirebaseIdToken: (...args: any[]) => mockVerifyIdToken(...args),
 }));
 
-vi.mock('../../api/lib/firebaseAdmin.js', () => ({
+vi.mock('../../api/_lib/firebaseAdmin.js', () => ({
   getFirebaseAdmin: () => ({
     db: {},
   }),
 }));
 
-vi.mock('../../api/lib/rateLimit.js', () => ({
+vi.mock('../../api/_lib/rateLimit.js', () => ({
   checkRateLimit: vi.fn(),
 }));
 
-import { checkRateLimit } from '../../api/lib/rateLimit.js';
+import { checkRateLimit } from '../../api/_lib/rateLimit.js';
 
 function createMockReqRes(method: string = 'POST', headers: Record<string, string> = {}, body: any = {}) {
   const req = {
@@ -106,7 +106,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('5b. Invalid private key returns FIREBASE_ADMIN_CONFIG_ERROR (500)', async () => {
-    const spy = vi.spyOn(await import('../../api/lib/firebaseAdmin.js'), 'getFirebaseAdmin').mockImplementation(() => {
+    const spy = vi.spyOn(await import('../../api/_lib/firebaseAdmin.js'), 'getFirebaseAdmin').mockImplementation(() => {
       throw new Error('FIREBASE_ADMIN_CONFIG_ERROR');
     });
 
