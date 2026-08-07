@@ -131,11 +131,7 @@ export default async function handler(req: any, res: any) {
           role: 'user',
           parts: [
             {
-              text: `Create a color palette based on the following description:\n"${promptText}"\nYou must output a JSON object matching this schema:\n${JSON.stringify(
-                GeminiPaletteSchema.shape,
-                null,
-                2
-              )}\nThe palette must contain exactly ${requestData.colorCount} colors. Each color object must have a HEX string (uppercase, # prefix), a short name, and a role description. Also include a paletteName, description, harmony, usageTips, and contrastNotes. Do not add any extra fields.`,
+              text: `Create a professional color palette for an artwork based on the following description:\n"${promptText}"\nReturn ONLY a JSON object matching this exact format:\n{\n  "paletteName": "Name of Palette",\n  "description": "Short description of the palette",\n  "harmony": "Harmonious style, e.g. Analogous, Complementary",\n  "colors": [\n    {\n      "hex": "#HEX6DIGITS",\n      "name": "Color Name",\n      "role": "Color Role, e.g. Dominant, Accent, Background"\n    }\n  ],\n  "usageTips": ["Tip 1", "Tip 2"],\n  "contrastNotes": ["Contrast note 1"]\n}\nThe "colors" array MUST contain exactly ${requestData.colorCount} colors. Every "hex" value MUST be an uppercase 6-digit hex code with a leading # (e.g. #E07A5F).`,
             },
           ],
         },
