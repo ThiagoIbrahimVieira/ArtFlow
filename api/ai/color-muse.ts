@@ -179,9 +179,10 @@ export default async function handler(req: any, res: any) {
         });
       }
 
+      console.error('Gemini API Error Status:', response.status, 'Body:', errText.slice(0, 300));
       return res.status(500).json({
         data: null,
-        error: { code: 'GEMINI_ERROR', message: 'Failed to generate palette with Gemini AI.' },
+        error: { code: 'GEMINI_ERROR', message: `Failed to generate palette with Gemini AI. (${response.status})` },
       });
     }
 
