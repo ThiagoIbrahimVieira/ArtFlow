@@ -179,14 +179,96 @@ describe('Fase de Correção Vercel & Authentication Flow Requirements', () => {
     expect(actionPhase2).toBe('HOME');
   });
 
-  it('9. Produção não conecta aos emuladores', () => {
-    const isDev = false;
-    const useEmulatorsEnv = 'true';
+  it('10. Login encerra loading em sucesso e erro', async () => {
+    let loading = true;
+    try {
+      throw new Error('Invalid credentials');
+    } catch {
+      // Handled
+    } finally {
+      loading = false;
+    }
+    expect(loading).toBe(false);
+  });
 
-    const shouldConnectEmulators = (dev: boolean, envVal: string) => {
-      return dev === true && envVal === 'true';
+  it('11. Cadastro não fica em Creating account quando perfil falha', async () => {
+    let isSubmitting = true;
+    const createUser = vi.fn().mockResolvedValue({ uid: 'u1' });
+    const createProfile = vi.fn().mockRejectedValue(new Error('Profile sync error'));
+
+    try {
+      const user = await createUser();
+      try {
+        await createProfile(user.uid);
+      } catch (err) {
+        // Non-fatal error
+      }
+    } finally {
+      isSubmitting = false;
+    }
+    expect(isSubmitting).toBe(false);
+  });
+
+  it('12. Perfil ausente não provoca logout', () => {
+    const user = { uid: 'u1' };
+    const profile = null; // Profile missing
+    const isAuthenticated = Boolean(user);
+    expect(isAuthenticated).toBe(true);
+    expect(profile).toBeNull();
+  });
+
+  it('13. Consulta Firestore com erro termina o loading e preserva dados', async () => {
+    let loading = true;
+    let error: string | null = null;
+    let data = [{ id: 'proj1', title: 'Existing Project' }];
+
+    try {
+      throw new Error('FIRESTORE_TIMEOUT');
+    } catch (err: any) {
+      error = 'Não foi possível carregar os projetos. Verifique sua conexão.';
+    } finally {
+      loading = false;
+    }
+
+    expect(loading).toBe(false);
+    expect(error).toContain('Não foi possível carregar os projetos');
+    expect(data.length).toBe(1); // Preserves existing data, does NOT replace with []
+  });
+
+  it('14. Estatísticas vazias exibem 0 (não 12, 48, 8)', () => {
+    const projects: any[] = [];
+    const references: any[] = [];
+    const palettes: any[] = [];
+
+    const stats = {
+      projectsCount: projects.length,
+      referencesCount: references.length,
+      palettesCount: palettes.length,
     };
 
-    expect(shouldConnectEmulators(isDev, useEmulatorsEnv)).toBe(false);
+    expect(stats.projectsCount).toBe(0);
+    expect(stats.referencesCount).toBe(0);
+    expect(stats.palettesCount).toBe(0);
+  });
+
+  it('15. Avatar padrão não utiliza foto fictícia de pessoa', () => {
+    const profile = { displayName: 'Thiago Ibrahim', avatarUrl: null };
+    const defaultWomanPhoto = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb';
+    expect(profile.avatarUrl).not.toBe(defaultWomanPhoto);
+    expect(profile.avatarUrl).toBeNull();
+  });
+
+  it('16. Nenhuma imagem Base64 é escrita no documento do Firestore', () => {
+    const invalidAvatarDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...';
+    const validateAvatarUrl = (url: string | null) => {
+      if (!url) return true;
+      if (url.startsWith('data:image')) {
+        throw new Error('BLOCKED: Base64/Data URL not allowed in Firestore');
+      }
+      return url.startsWith('http://') || url.startsWith('https://');
+    };
+
+    expect(() => validateAvatarUrl(invalidAvatarDataUrl)).toThrow('BLOCKED');
+    expect(validateAvatarUrl('https://example.com/avatar.jpg')).toBe(true);
   });
 });

@@ -94,9 +94,22 @@ function mapDocToProject(id: string, data: any): Project {
   };
 }
 
-export async function listProjects(uid: string): Promise<Project[]> {
+async function withTimeout<T>(promise: Promise<T>, ms: number = 7000): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('FIRESTORE_TIMEOUT')), ms);
+  });
   try {
-    const colRef = collection(db, 'users', uid, 'projects');
+    const result = await Promise.race([promise, timeoutPromise]);
+    return result;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function listProjects(uid: string): Promise<Project[]> {
+  const colRef = collection(db, 'users', uid, 'projects');
+  const fetchFn = async () => {
     let snap;
     try {
       const q = query(colRef, orderBy('createdAt', 'desc'));
@@ -105,10 +118,8 @@ export async function listProjects(uid: string): Promise<Project[]> {
       snap = await getDocs(colRef);
     }
     return snap.docs.map((d) => mapDocToProject(d.id, d.data()));
-  } catch (error) {
-    console.error('Failed to list projects:', error);
-    return [];
-  }
+  };
+  return withTimeout(fetchFn());
 }
 
 export async function getProject(uid: string, projectId: string): Promise<Project | null> {

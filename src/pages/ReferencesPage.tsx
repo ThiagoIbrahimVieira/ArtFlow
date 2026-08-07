@@ -24,6 +24,7 @@ export const ReferencesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [references, setReferences] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // DeviantArt inspiration modal state
   const [isDaModalOpen, setIsDaModalOpen] = useState(false);
@@ -43,18 +44,43 @@ export const ReferencesPage: React.FC = () => {
     if (!user) return;
     try {
       setLoading(true);
+      setError(null);
       const data = await listReferences(user.uid);
-      setReferences(data.length > 0 ? data : MOCK_REFERENCES);
-    } catch (err) {
+      setReferences(data);
+    } catch (err: any) {
       console.error('Failed to list references:', err);
-      setReferences(MOCK_REFERENCES);
+      setError('Não foi possível carregar as referências. Verifique sua conexão.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUserReferences();
+    let isMounted = true;
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    listReferences(user.uid)
+      .then((data) => {
+        if (isMounted) {
+          setReferences(data);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          console.error('Failed to list references:', err);
+          setError('Não foi possível carregar as referências. Verifique sua conexão.');
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const handleBookmarkToggle = async (id: string) => {
@@ -238,6 +264,16 @@ export const ReferencesPage: React.FC = () => {
           {loading ? (
             <div className="py-12 text-center text-[#A99D8E] text-xs">
               Loading references...
+            </div>
+          ) : error ? (
+            <div className="py-12 text-center space-y-3">
+              <p className="text-sm font-sans text-red-400">{error}</p>
+              <button
+                onClick={fetchUserReferences}
+                className="px-4 py-2 bg-[#272320] border border-[#433D37] text-[#D9B98D] text-xs font-sans rounded-xl hover:bg-[#332E2A] transition-colors"
+              >
+                Tentar novamente
+              </button>
             </div>
           ) : filteredReferences.length > 0 ? (
             <div className="grid grid-cols-2 gap-3.5">

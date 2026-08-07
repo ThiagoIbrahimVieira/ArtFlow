@@ -1,42 +1,42 @@
-import { getAdminDb } from './firebaseAdmin.js';
+import { type Firestore, Timestamp } from 'firebase-admin/firestore';
 
-export async function checkRateLimit(uid: string): Promise<{ allowed: boolean; code?: string; message?: string }> {
+export async function checkRateLimit(uid: string, db: Firestore | null): Promise<{ allowed: boolean; code?: string; message?: string }> {
   if (!uid) {
     return { allowed: false, code: 'AUTH_REQUIRED', message: 'User ID missing.' };
   }
 
-  let db;
-  try {
-    db = getAdminDb();
-  } catch (err) {
-    // If Firestore Admin is unconfigured, allow request to proceed or mock
-    return { allowed: true };
+  if (!db) {
+    return {
+      allowed: false,
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      message: 'O controle de uso está temporariamente indisponível.',
+    };
   }
 
-  const nowSeconds = Math.floor(Date.now() / 1000);
+  const now = Timestamp.now();
   const docRef = db.collection('rateLimits').doc(uid);
 
   try {
-    await db.runTransaction(async (t: any) => {
+    await db.runTransaction(async (t) => {
       const snap = await t.get(docRef);
-      let hourlyStart = nowSeconds;
-      let dailyStart = nowSeconds;
+      let hourlyStart = now;
+      let dailyStart = now;
       let hourlyCount = 0;
       let dailyCount = 0;
 
       if (snap.exists) {
         const data = snap.data() || {};
-        hourlyStart = typeof data.hourlyStart === 'number' ? data.hourlyStart : (data.hourlyStart?.seconds ?? nowSeconds);
-        dailyStart = typeof data.dailyStart === 'number' ? data.dailyStart : (data.dailyStart?.seconds ?? nowSeconds);
+        hourlyStart = data.hourlyStart ?? now;
+        dailyStart = data.dailyStart ?? now;
         hourlyCount = data.hourlyCount ?? 0;
         dailyCount = data.dailyCount ?? 0;
 
-        if (nowSeconds - hourlyStart >= 3600) {
-          hourlyStart = nowSeconds;
+        if (now.seconds - hourlyStart.seconds >= 3600) {
+          hourlyStart = now;
           hourlyCount = 0;
         }
-        if (nowSeconds - dailyStart >= 86400) {
-          dailyStart = nowSeconds;
+        if (now.seconds - dailyStart.seconds >= 86400) {
+          dailyStart = now;
           dailyCount = 0;
         }
       }
@@ -53,7 +53,7 @@ export async function checkRateLimit(uid: string): Promise<{ allowed: boolean; c
         dailyStart,
         hourlyCount,
         dailyCount,
-        updatedAt: nowSeconds,
+        updatedAt: now,
       });
     });
 
@@ -66,8 +66,11 @@ export async function checkRateLimit(uid: string): Promise<{ allowed: boolean; c
         message: 'ArtFlow rate limit reached (10 generations per hour or 30 per day).',
       };
     }
-    console.error('Rate limit error:', e);
-    // Return allowed if Firestore is uninitialized or in test mock mode
-    return { allowed: true };
+    console.error('Rate-limit storage unavailable', e);
+    return {
+      allowed: false,
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      message: 'O controle de uso está temporariamente indisponível.',
+    };
   }
 }

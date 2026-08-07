@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "api/ai/color-muse.ts": {
+      "maxDuration": 60
+    },
+    "api/ai/color-palette.ts": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     {
       "source": "/((?!api/|assets/|favicon.ico).*)",

@@ -1,10 +1,10 @@
-import { getFirebaseAdmin } from '../lib/firebaseAdmin.js';
-import { checkRateLimit } from '../lib/rateLimit.js';
+import { getFirebaseAdmin } from '../_lib/firebaseAdmin.js';
+import { checkRateLimit } from '../_lib/rateLimit.js';
 import {
   ColorMuseRequestSchema,
   GeminiPaletteSchema,
-} from '../lib/colorMuseSchemas.js';
-import { verifyFirebaseIdToken } from '../lib/verifyIdToken.js';
+} from '../_lib/colorMuseSchemas.js';
+import { verifyFirebaseIdToken } from '../_lib/verifyIdToken.js';
 
 export default async function handler(req: any, res: any) {
   // 1. Method check: POST only
@@ -24,14 +24,14 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // 3. Environment check
+  // 3. Environment check for Firebase project ID
   const projectId = process.env.FIREBASE_PROJECT_ID?.replace(/^["']|["']$/g, '').trim();
   if (!projectId) {
     return res.status(500).json({
       data: null,
       error: {
         code: "FIREBASE_ADMIN_CONFIG_ERROR",
-        message: "A configuração do servidor Firebase está inválida (FIREBASE_PROJECT_ID ausente).",
+        message: "A configuração do servidor Firebase está inválida.",
       },
     });
   }
@@ -58,26 +58,7 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // 5. Rate-limit check (App rate limit via Firestore Admin if initialized)
-  let adminDb: any = null;
-  try {
-    adminDb = getFirebaseAdmin().db;
-  } catch (err) {
-    // Admin DB uninitialized
-  }
-
-  const rateLimitResult = await checkRateLimit(uid, adminDb);
-  if (!rateLimitResult.allowed) {
-    return res.status(429).json({
-      data: null,
-      error: {
-        code: rateLimitResult.code || 'APP_RATE_LIMIT_EXCEEDED',
-        message: rateLimitResult.message || 'ArtFlow rate limit exceeded.',
-      },
-    });
-  }
-
-  // 6. Input payload validation with Zod
+  // 5. Input payload validation with Zod BEFORE consuming rate-limit quota
   const rawBody = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
   const parseResult = ColorMuseRequestSchema.safeParse(rawBody);
   if (!parseResult.success) {
@@ -88,6 +69,41 @@ export default async function handler(req: any, res: any) {
   }
 
   const requestData = parseResult.data;
+
+  // 6. Get Firebase Admin & Rate-limit check
+  let adminDb: any = null;
+  try {
+    adminDb = getFirebaseAdmin().db;
+  } catch (err: any) {
+    return res.status(500).json({
+      data: null,
+      error: {
+        code: "FIREBASE_ADMIN_CONFIG_ERROR",
+        message: "A configuração do servidor Firebase está inválida.",
+      },
+    });
+  }
+
+  const rateLimitResult = await checkRateLimit(uid, adminDb);
+  if (!rateLimitResult.allowed) {
+    if (rateLimitResult.code === 'RATE_LIMIT_UNAVAILABLE') {
+      return res.status(503).json({
+        data: null,
+        error: {
+          code: 'RATE_LIMIT_UNAVAILABLE',
+          message: 'O controle de uso está temporariamente indisponível.',
+        },
+      });
+    }
+    return res.status(429).json({
+      data: null,
+      error: {
+        code: rateLimitResult.code || 'APP_RATE_LIMIT_EXCEEDED',
+        message: rateLimitResult.message || 'ArtFlow rate limit exceeded.',
+      },
+    });
+  }
+
 
   // 7. Gemini API Key check
   const apiKey = process.env.GEMINI_API_KEY;

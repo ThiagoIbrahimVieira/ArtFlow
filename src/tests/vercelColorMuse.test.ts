@@ -4,21 +4,21 @@ import handler from '../../api/ai/color-muse';
 const mockVerifyIdToken = vi.fn();
 
 // Mock verifyIdToken, firebaseAdmin, and rateLimit modules
-vi.mock('../../api/lib/verifyIdToken.js', () => ({
+vi.mock('../../api/_lib/verifyIdToken.js', () => ({
   verifyFirebaseIdToken: (...args: any[]) => mockVerifyIdToken(...args),
 }));
 
-vi.mock('../../api/lib/firebaseAdmin.js', () => ({
+vi.mock('../../api/_lib/firebaseAdmin.js', () => ({
   getFirebaseAdmin: () => ({
     db: {},
   }),
 }));
 
-vi.mock('../../api/lib/rateLimit.js', () => ({
+vi.mock('../../api/_lib/rateLimit.js', () => ({
   checkRateLimit: vi.fn(),
 }));
 
-import { checkRateLimit } from '../../api/lib/rateLimit.js';
+import { checkRateLimit } from '../../api/_lib/rateLimit.js';
 
 function createMockReqRes(method: string = 'POST', headers: Record<string, string> = {}, body: any = {}) {
   const req = {
@@ -95,13 +95,45 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
     expect(res.getResponse()?.error?.code).toBe('VALIDATION_ERROR');
   });
 
-  it('5. Secret missing returns controlled error', async () => {
-    delete process.env.GEMINI_API_KEY;
+  it('5. Secret missing or invalid admin config returns FIREBASE_ADMIN_CONFIG_ERROR (500)', async () => {
+    delete process.env.FIREBASE_PROJECT_ID;
     mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { medium: 'oil', subject: 'landscape', mood: 'calm', colorCount: 5 });
     await handler(req, res);
     expect(res.getStatusCode()).toBe(500);
-    expect(res.getResponse()?.error?.code).toBe('CONFIG_ERROR');
+    expect(res.getResponse()?.error?.code).toBe('FIREBASE_ADMIN_CONFIG_ERROR');
+    expect(res.getResponse()?.error?.message).toBe('A configuração do servidor Firebase está inválida.');
+  });
+
+  it('5b. Invalid private key returns FIREBASE_ADMIN_CONFIG_ERROR (500)', async () => {
+    const spy = vi.spyOn(await import('../../api/_lib/firebaseAdmin.js'), 'getFirebaseAdmin').mockImplementation(() => {
+      throw new Error('FIREBASE_ADMIN_CONFIG_ERROR');
+    });
+
+    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
+    const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { medium: 'oil', subject: 'landscape', mood: 'calm', colorCount: 5 });
+    await handler(req, res);
+    expect(res.getStatusCode()).toBe(500);
+    expect(res.getResponse()?.error?.code).toBe('FIREBASE_ADMIN_CONFIG_ERROR');
+    spy.mockRestore();
+  });
+
+  it('5c. Firestore rate-limit unavailable returns 503 RATE_LIMIT_UNAVAILABLE', async () => {
+    process.env.FIREBASE_PROJECT_ID = 'valid-project';
+    process.env.FIREBASE_CLIENT_EMAIL = 'valid-email@example.com';
+    process.env.FIREBASE_PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----';
+    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
+    (checkRateLimit as any).mockResolvedValue({
+      allowed: false,
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      message: 'O controle de uso está temporariamente indisponível.',
+    });
+
+    const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { medium: 'oil', subject: 'landscape', mood: 'calm', colorCount: 5 });
+    await handler(req, res);
+    expect(res.getStatusCode()).toBe(503);
+    expect(res.getResponse()?.error?.code).toBe('RATE_LIMIT_UNAVAILABLE');
+    expect(res.getResponse()?.error?.message).toBe('O controle de uso está temporariamente indisponível.');
   });
 
   it('6. Mocked Gemini returns valid palette', async () => {

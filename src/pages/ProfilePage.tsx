@@ -12,17 +12,25 @@ import { listProjects } from '../services/projectService';
 import { listReferences } from '../services/referenceService';
 import { listPalettes } from '../services/paletteService';
 
+function getInitials(name: string): string {
+  if (!name) return 'A';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export const ProfilePage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bioInput, setBioInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const [stats, setStats] = useState({
-    projectsCount: 12,
-    referencesCount: 48,
-    palettesCount: 8,
-  });
+  const [stats, setStats] = useState<{
+    projectsCount: number;
+    referencesCount: number;
+    palettesCount: number;
+  } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     if (profile?.bio) {
@@ -31,24 +39,38 @@ export const ProfilePage: React.FC = () => {
   }, [profile]);
 
   useEffect(() => {
+    let isMounted = true;
     async function loadStats() {
       if (!user) return;
       try {
+        setStatsLoading(true);
         const [projects, references, palettes] = await Promise.all([
-          listProjects(user.uid),
-          listReferences(user.uid),
-          listPalettes(user.uid),
+          listProjects(user.uid).catch(() => []),
+          listReferences(user.uid).catch(() => []),
+          listPalettes(user.uid).catch(() => []),
         ]);
-        setStats({
-          projectsCount: projects.length > 0 ? projects.length : 12,
-          referencesCount: references.length > 0 ? references.length : 48,
-          palettesCount: palettes.length > 0 ? palettes.length : 8,
-        });
+        if (isMounted) {
+          setStats({
+            projectsCount: projects.length,
+            referencesCount: references.length,
+            palettesCount: palettes.length,
+          });
+        }
       } catch (err) {
         console.error('Failed to load profile stats:', err);
+        if (isMounted) {
+          setStats({ projectsCount: 0, referencesCount: 0, palettesCount: 0 });
+        }
+      } finally {
+        if (isMounted) {
+          setStatsLoading(false);
+        }
       }
     }
     loadStats();
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const handleSaveBio = async () => {
@@ -65,6 +87,10 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleImageUploadClick = () => {
+    alert('BLOCKED: O armazenamento de imagens (Firebase Storage) não está configurado no projeto. O avatar de iniciais neutras é utilizado por padrão.');
+  };
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -76,7 +102,7 @@ export const ProfilePage: React.FC = () => {
   const name = profile?.displayName || profile?.name || user?.displayName || 'Artist';
   const username = profile?.username || '@artist';
   const bio = profile?.bio || 'Passionate artist creating art on ArtFlow.';
-  const avatarUrl = profile?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
+  const avatarUrl = profile?.avatarUrl || null;
 
   return (
     <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] mx-auto relative pb-24">
@@ -88,14 +114,22 @@ export const ProfilePage: React.FC = () => {
           <div className="flex items-center gap-4">
             {/* Avatar with edit overlay */}
             <div className="relative w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-[#433D37] shadow-inner">
-              <ArtworkImage
-                src={avatarUrl}
-                alt={name}
-                className="w-full h-full object-cover"
-              />
+              {avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) ? (
+                <ArtworkImage
+                  src={avatarUrl}
+                  alt={name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-[#191715] flex items-center justify-center border border-[#433D37]">
+                  <span className="font-serif text-2xl text-[#D9B98D] tracking-wider font-semibold">
+                    {getInitials(name)}
+                  </span>
+                </div>
+              )}
               <button
-                onClick={() => setIsEditingBio(true)}
-                aria-label="Edit profile"
+                onClick={handleImageUploadClick}
+                aria-label="Upload profile image"
                 className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-[#191715]/80 text-[#F1E2CB] flex items-center justify-center border border-white/20 hover:bg-[#191715]"
               >
                 <Pencil className="w-3 h-3" />
@@ -136,11 +170,19 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           {/* Statistics Bar */}
-          <ProfileStats
-            projectsCount={stats.projectsCount}
-            referencesCount={stats.referencesCount}
-            palettesCount={stats.palettesCount}
-          />
+          {statsLoading || !stats ? (
+            <div className="grid grid-cols-3 gap-2 py-3 bg-[#191715]/60 rounded-2xl border border-[#3A332C]/60 text-center animate-pulse">
+              <div className="h-8 bg-[#332E2A] rounded-lg mx-2" />
+              <div className="h-8 bg-[#332E2A] rounded-lg mx-2" />
+              <div className="h-8 bg-[#332E2A] rounded-lg mx-2" />
+            </div>
+          ) : (
+            <ProfileStats
+              projectsCount={stats.projectsCount}
+              referencesCount={stats.referencesCount}
+              palettesCount={stats.palettesCount}
+            />
+          )}
         </div>
 
         {/* Account Actions / Logout */}

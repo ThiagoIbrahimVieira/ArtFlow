@@ -12,7 +12,7 @@ import {
 } from 'firebase/auth';
 
 import { auth, googleProvider } from '../lib/firebase';
-import { createUserProfile, getUserProfile } from './userService';
+import { createUserProfile, getUserProfile, ensureUserProfile } from './userService';
 import { UserProfile } from '../types';
 
 export interface SignUpParams {
@@ -81,10 +81,15 @@ export async function signUp({ displayName, email, password }: SignUpParams): Pr
       console.warn('Could not send verification email immediately:', verr);
     }
 
-    const profile = await createUserProfile(user.uid, {
-      displayName: trimmedName,
-      email: normalizedEmail,
-    });
+    let profile: UserProfile | null = null;
+    try {
+      profile = await ensureUserProfile(user.uid, {
+        displayName: trimmedName,
+        email: normalizedEmail,
+      });
+    } catch (pErr) {
+      console.error('Non-fatal error creating user profile during sign up:', pErr);
+    }
 
     return { user, profile };
   } catch (error) {

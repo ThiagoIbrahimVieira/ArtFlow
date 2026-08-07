@@ -76,7 +76,7 @@ export async function createUserProfile(
     };
   }
 
-  const defaultAvatar = data.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
+  const defaultAvatar = data.avatarUrl || null;
 
   const newProfile = {
     displayName: data.displayName.trim(),
@@ -104,6 +104,21 @@ export async function createUserProfile(
   };
 }
 
+export async function ensureUserProfile(
+  uid: string,
+  data: {
+    displayName: string;
+    email: string;
+  }
+): Promise<UserProfile | null> {
+  try {
+    return await createUserProfile(uid, data);
+  } catch (err) {
+    console.error('ensureUserProfile error (non-fatal):', err);
+    return null;
+  }
+}
+
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   try {
     const profileRef = doc(db, 'users', uid);
@@ -118,7 +133,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       name: data.displayName || 'Artist',
       email: data.email || '',
       username: data.username ? `@${data.username.replace(/^@/, '')}` : '@artist',
-      avatarUrl: data.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      avatarUrl: data.avatarUrl || null,
       bio: data.bio || '',
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
       updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,

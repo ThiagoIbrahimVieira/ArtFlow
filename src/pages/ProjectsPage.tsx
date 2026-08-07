@@ -12,28 +12,54 @@ export const ProjectsPage: React.FC = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState('Digital Painting');
   const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const fetchProjects = async () => {
     if (!user) return;
     try {
       setLoading(true);
+      setError(null);
       const data = await listProjects(user.uid);
-      setProjects(data.length > 0 ? data : MOCK_PROJECTS.slice(0, 3));
-    } catch (err) {
+      setProjects(data);
+    } catch (err: any) {
       console.error('Failed to load projects:', err);
-      setProjects(MOCK_PROJECTS.slice(0, 3));
+      setError('Não foi possível carregar os projetos. Verifique sua conexão.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProjects();
+    let isMounted = true;
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    listProjects(user.uid)
+      .then((data) => {
+        if (isMounted) {
+          setProjects(data);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          console.error('Failed to load projects:', err);
+          setError('Não foi possível carregar os projetos. Verifique sua conexão.');
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
@@ -96,6 +122,16 @@ export const ProjectsPage: React.FC = () => {
         {loading ? (
           <div className="py-12 text-center text-[#A99D8E] text-xs">
             Loading your projects...
+          </div>
+        ) : error ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm font-sans text-red-400">{error}</p>
+            <button
+              onClick={fetchProjects}
+              className="px-4 py-2 bg-[#272320] border border-[#433D37] text-[#D9B98D] text-xs font-sans rounded-xl hover:bg-[#332E2A] transition-colors"
+            >
+              Tentar novamente
+            </button>
           </div>
         ) : projects.length > 0 ? (
           <div className="space-y-3.5">

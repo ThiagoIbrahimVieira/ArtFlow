@@ -29,7 +29,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, authLoading, isSubmittingAuth } = useAuth();
+  const { user, authLoading } = useAuth();
 
   if (authLoading) {
     return (
@@ -40,7 +40,7 @@ const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
     );
   }
 
-  if (user && !isSubmittingAuth) {
+  if (user) {
     return <Navigate to="/home" replace />;
   }
 

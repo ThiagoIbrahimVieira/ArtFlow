@@ -106,16 +106,32 @@ function mapDocToPalette(id: string, data: any): Palette {
   };
 }
 
-export async function listPalettes(uid: string): Promise<Palette[]> {
+async function withTimeout<T>(promise: Promise<T>, ms: number = 7000): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('FIRESTORE_TIMEOUT')), ms);
+  });
   try {
-    const colRef = collection(db, 'users', uid, 'palettes');
-    const q = query(colRef, orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => mapDocToPalette(d.id, d.data()));
-  } catch (error) {
-    console.error('Failed to list palettes:', error);
-    return [];
+    const result = await Promise.race([promise, timeoutPromise]);
+    return result;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+export async function listPalettes(uid: string): Promise<Palette[]> {
+  const colRef = collection(db, 'users', uid, 'palettes');
+  const fetchFn = async () => {
+    let snap;
+    try {
+      const q = query(colRef, orderBy('createdAt', 'desc'));
+      snap = await getDocs(q);
+    } catch {
+      snap = await getDocs(colRef);
+    }
+    return snap.docs.map((d) => mapDocToPalette(d.id, d.data()));
+  };
+  return withTimeout(fetchFn());
 }
 
 export async function getPalette(uid: string, paletteId: string): Promise<Palette | null> {

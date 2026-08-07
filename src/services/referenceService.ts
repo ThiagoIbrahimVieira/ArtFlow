@@ -40,9 +40,22 @@ function mapDocToReference(id: string, data: any): Reference {
   };
 }
 
-export async function listReferences(uid: string): Promise<Reference[]> {
+async function withTimeout<T>(promise: Promise<T>, ms: number = 7000): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('FIRESTORE_TIMEOUT')), ms);
+  });
   try {
-    const colRef = collection(db, 'users', uid, 'references');
+    const result = await Promise.race([promise, timeoutPromise]);
+    return result;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function listReferences(uid: string): Promise<Reference[]> {
+  const colRef = collection(db, 'users', uid, 'references');
+  const fetchFn = async () => {
     let snap;
     try {
       const q = query(colRef, orderBy('createdAt', 'desc'));
@@ -51,10 +64,8 @@ export async function listReferences(uid: string): Promise<Reference[]> {
       snap = await getDocs(colRef);
     }
     return snap.docs.map((d) => mapDocToReference(d.id, d.data()));
-  } catch (error) {
-    console.error('Failed to list references:', error);
-    return [];
-  }
+  };
+  return withTimeout(fetchFn());
 }
 
 export async function getReference(uid: string, referenceId: string): Promise<Reference | null> {

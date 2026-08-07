@@ -17,6 +17,7 @@ export const PalettesPage: React.FC = () => {
   const { user } = useAuth();
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Color Muse Generator Modal state
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -40,18 +41,43 @@ export const PalettesPage: React.FC = () => {
     if (!user) return;
     try {
       setLoading(true);
+      setError(null);
       const data = await listPalettes(user.uid);
-      setPalettes(data.length > 0 ? data : MOCK_PALETTES);
-    } catch (err) {
+      setPalettes(data);
+    } catch (err: any) {
       console.error('Failed to list palettes:', err);
-      setPalettes(MOCK_PALETTES);
+      setError('Não foi possível carregar as paletas. Verifique sua conexão.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPalettes();
+    let isMounted = true;
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    listPalettes(user.uid)
+      .then((data) => {
+        if (isMounted) {
+          setPalettes(data);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          console.error('Failed to list palettes:', err);
+          setError('Não foi possível carregar as paletas. Verifique sua conexão.');
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const isAdmin = user?.email?.toLowerCase() === 'thiagoibrahimvieira@gmail.com';
@@ -182,25 +208,33 @@ export const PalettesPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Featured Palette of the Day */}
+        {/* Featured & Palette List */}
         {loading ? (
-          <div className="py-6 text-center text-xs text-[#A99D8E]">Loading palettes...</div>
+          <div className="py-12 text-center text-xs text-[#A99D8E]">Loading palettes...</div>
+        ) : error ? (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm font-sans text-red-400">{error}</p>
+            <button
+              onClick={fetchPalettes}
+              className="px-4 py-2 bg-[#272320] border border-[#433D37] text-[#D9B98D] text-xs font-sans rounded-xl hover:bg-[#332E2A] transition-colors"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : palettes.length > 0 ? (
+          <>
+            <PaletteCard palette={palettes[0]} isFeatured />
+            <div className="space-y-3.5 pt-1">
+              {palettes.slice(1).map((palette) => (
+                <PaletteCard key={palette.id} palette={palette} />
+              ))}
+            </div>
+          </>
         ) : (
-          <PaletteCard
-            palette={featuredPalette}
-            isFeatured
-          />
+          <div className="py-12 text-center text-[#A99D8E]">
+            <p className="text-sm font-sans">No palettes yet. Create or generate one above!</p>
+          </div>
         )}
-
-        {/* List of Palettes */}
-        <div className="space-y-3.5 pt-1">
-          {libraryPalettes.map((palette) => (
-            <PaletteCard
-              key={palette.id}
-              palette={palette}
-            />
-          ))}
-        </div>
       </main>
 
       {/* Color Muse Generator Modal */}

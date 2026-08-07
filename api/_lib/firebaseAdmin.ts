@@ -1,80 +1,69 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
-let adminAuthInstance: Auth | null = null;
-let adminDbInstance: Firestore | null = null;
-let initError: string | null = null;
+interface FirebaseAdminServices {
+  db: Firestore;
+  auth: Auth;
+}
 
-function cleanValue(val?: string): string {
-  if (!val) return '';
-  let cleaned = val.trim();
-  if (
-    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
-    (cleaned.startsWith("'") && cleaned.endsWith("'"))
-  ) {
-    cleaned = cleaned.slice(1, -1).trim();
+let cachedServices: FirebaseAdminServices | null = null;
+
+export function getFirebaseAdmin(): FirebaseAdminServices {
+  if (cachedServices) {
+    return cachedServices;
   }
-  return cleaned;
-}
 
-function normalizePrivateKey(key: string): string {
-  if (!key) return '';
-  let cleaned = cleanValue(key);
+  const projectId = process.env.FIREBASE_PROJECT_ID?.replace(/^["']|["']$/g, "").trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.replace(/^["']|["']$/g, "").trim();
+  const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-  cleaned = cleaned.replace(/\\n/g, '\n');
-  cleaned = cleaned.replace(/\r/g, '');
+  if (!projectId || !clientEmail || !rawPrivateKey) {
+    throw new Error("FIREBASE_ADMIN_CONFIG_ERROR");
+  }
 
-  return cleaned;
-}
+  const privateKey = rawPrivateKey
+    .replace(/^["']|["']$/g, "")
+    .replace(/\\n/g, "\n")
+    .trim();
 
-function initFirebaseAdmin() {
-  if (adminAuthInstance && adminDbInstance) return;
+  const validPrivateKey =
+    privateKey.includes("-----BEGIN PRIVATE KEY-----") &&
+    privateKey.includes("-----END PRIVATE KEY-----");
+
+  if (!validPrivateKey) {
+    throw new Error("FIREBASE_ADMIN_CONFIG_ERROR");
+  }
 
   try {
-    if (getApps().length > 0) {
-      const app = getApps()[0];
-      adminAuthInstance = getAuth(app);
-      adminDbInstance = getFirestore(app);
-      return;
-    }
+    const app =
+      getApps().length > 0
+        ? getApp()
+        : initializeApp({
+            projectId,
+            credential: cert({
+              projectId,
+              clientEmail,
+              privateKey,
+            }),
+          });
 
-    const projectId = cleanValue(process.env.FIREBASE_PROJECT_ID);
-    const clientEmail = cleanValue(process.env.FIREBASE_CLIENT_EMAIL);
-    const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+    cachedServices = {
+      db: getFirestore(app),
+      auth: getAuth(app),
+    };
 
-    if (projectId && clientEmail && rawPrivateKey) {
-      const privateKey = normalizePrivateKey(rawPrivateKey);
-      const app = initializeApp({
-        credential: cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        }),
-        projectId,
-      });
-      adminAuthInstance = getAuth(app);
-      adminDbInstance = getFirestore(app);
-    } else {
-      initError = 'Variáveis do Firebase Admin (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) não foram configuradas nas Environment Variables da Vercel.';
-    }
-  } catch (err: any) {
-    initError = `Erro de inicialização do Firebase Admin: ${err.message}`;
+    return cachedServices;
+  } catch (e) {
+    throw new Error("FIREBASE_ADMIN_CONFIG_ERROR");
   }
 }
 
 export function getAdminAuth(): Auth {
-  initFirebaseAdmin();
-  if (!adminAuthInstance) {
-    throw new Error(initError || 'Firebase Admin Auth não foi inicializado.');
-  }
-  return adminAuthInstance;
+  return getFirebaseAdmin().auth;
 }
 
 export function getAdminDb(): Firestore {
-  initFirebaseAdmin();
-  if (!adminDbInstance) {
-    throw new Error(initError || 'Firebase Admin Firestore não foi inicializado.');
-  }
-  return adminDbInstance;
+  return getFirebaseAdmin().db;
 }
+
