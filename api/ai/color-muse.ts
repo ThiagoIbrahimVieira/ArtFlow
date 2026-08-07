@@ -155,6 +155,16 @@ export default async function handler(req: any, res: any) {
       const errText = await response.text().catch(() => '');
       const errLower = errText.toLowerCase();
 
+      if (errLower.includes('api_key_invalid') || errLower.includes('key not valid')) {
+        return res.status(500).json({
+          data: null,
+          error: {
+            code: 'GEMINI_ERROR',
+            message: 'A chave GEMINI_API_KEY configurada na Vercel está inválida ou revogada pelo Google.',
+          },
+        });
+      }
+
       if (
         response.status === 429 ||
         errLower.includes('quota') ||
@@ -182,7 +192,7 @@ export default async function handler(req: any, res: any) {
       console.error('Gemini API Error Status:', response.status, 'Body:', errText.slice(0, 300));
       return res.status(500).json({
         data: null,
-        error: { code: 'GEMINI_ERROR', message: `Failed to generate palette with Gemini AI. (${response.status})` },
+        error: { code: 'GEMINI_ERROR', message: 'Failed to generate palette with Gemini AI.' },
       });
     }
 
