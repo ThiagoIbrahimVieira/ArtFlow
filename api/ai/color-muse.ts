@@ -1,10 +1,10 @@
-import { getFirebaseAdmin } from '../_lib/firebaseAdmin.js';
-import { checkRateLimit } from '../_lib/rateLimit.js';
+import { getFirebaseAdmin } from '../_lib/firebaseAdmin';
+import { checkRateLimit } from '../_lib/rateLimit';
 import {
   ColorMuseRequestSchema,
   GeminiPaletteSchema,
-} from '../_lib/colorMuseSchemas.js';
-import { verifyFirebaseIdToken } from '../_lib/verifyIdToken.js';
+} from '../_lib/colorMuseSchemas';
+import { verifyFirebaseIdToken } from '../_lib/verifyIdToken';
 
 export default async function handler(req: any, res: any) {
   // 1. Method check: POST only
@@ -30,8 +30,8 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({
       data: null,
       error: {
-        code: "FIREBASE_ADMIN_CONFIG_ERROR",
-        message: "A configuração do servidor Firebase está inválida.",
+        code: 'FIREBASE_ADMIN_CONFIG_ERROR',
+        message: 'A configuração do servidor Firebase está inválida.',
       },
     });
   }
@@ -78,8 +78,8 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({
       data: null,
       error: {
-        code: "FIREBASE_ADMIN_CONFIG_ERROR",
-        message: "A configuração do servidor Firebase está inválida.",
+        code: 'FIREBASE_ADMIN_CONFIG_ERROR',
+        message: 'A configuração do servidor Firebase está inválida.',
       },
     });
   }
@@ -104,7 +104,6 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-
   // 7. Gemini API Key check
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -114,17 +113,13 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // 8. Call Gemini AI via native REST API (fetch)
-  const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-  const promptText = [
-    requestData.medium ? `Art Medium: ${requestData.medium}` : '',
-    requestData.subject ? `Subject: ${requestData.subject}` : '',
-    requestData.mood ? `Mood: ${requestData.mood}` : '',
-    requestData.baseColor ? `Base Color: ${requestData.baseColor}` : '',
-  ].filter(Boolean).join(', ');
+  const cleanApiKey = apiKey.replace(/^["']|["']$/g, '').trim();
+  const rawModel = process.env.GEMINI_MODEL?.replace(/^["']|["']$/g, '').trim();
+  const modelName = rawModel || 'gemini-1.5-flash';
 
+  // 8. Call Gemini AI via native REST API (fetch)
   try {
-    const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(cleanApiKey)}`;
     const payload = {
       contents: [
         {
@@ -153,20 +148,71 @@ export default async function handler(req: any, res: any) {
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');
-      const errLower = errText.toLowerCase();
+      let googleStatus = 'UNKNOWN';
+      let googleMessage = '';
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson?.error) {
+          googleStatus = errJson.error.status || String(errJson.error.code || response.status);
+          googleMessage = errJson.error.message || '';
+        }
+      } catch {
+        googleMessage = errText.slice(0, 300);
+      }
 
-      if (errLower.includes('api_key_invalid') || errLower.includes('key not valid')) {
-        return res.status(500).json({
+      // Safe server-side log for GEMINI_HTTP
+      console.error('[GEMINI_HTTP] Error calling Gemini API:', {
+        stage: 'GEMINI_HTTP',
+        responseStatus: response.status,
+        googleStatus,
+        googleMessage,
+        model: modelName,
+      });
+
+      const errLower = (googleMessage || errText).toLowerCase();
+
+      if (response.status === 400) {
+        if (errLower.includes('api_key_invalid') || errLower.includes('key not valid') || errLower.includes('api key not valid')) {
+          return res.status(500).json({
+            data: null,
+            error: {
+              code: 'GEMINI_AUTH_ERROR',
+              message: 'A chave GEMINI_API_KEY configurada na Vercel está inválida ou revogada pelo Google.',
+            },
+          });
+        }
+        return res.status(400).json({
           data: null,
           error: {
-            code: 'GEMINI_ERROR',
-            message: 'A chave GEMINI_API_KEY configurada na Vercel está inválida ou revogada pelo Google.',
+            code: 'GEMINI_BAD_REQUEST',
+            message: 'Requisição inválida enviada para a API do Gemini.',
+          },
+        });
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        return res.status(403).json({
+          data: null,
+          error: {
+            code: 'GEMINI_AUTH_ERROR',
+            message: 'Falha de autenticação ou permissão de acesso à API do Gemini.',
+          },
+        });
+      }
+
+      if (response.status === 404) {
+        return res.status(404).json({
+          data: null,
+          error: {
+            code: 'GEMINI_MODEL_NOT_FOUND',
+            message: `O modelo Gemini configurado (${modelName}) não foi encontrado ou não está disponível.`,
           },
         });
       }
 
       if (
         response.status === 429 ||
+        googleStatus === 'RESOURCE_EXHAUSTED' ||
         errLower.includes('quota') ||
         errLower.includes('rate limit') ||
         errLower.includes('resource_exhausted')
@@ -189,39 +235,89 @@ export default async function handler(req: any, res: any) {
         });
       }
 
-      console.error('Gemini API Error Status:', response.status, 'Body:', errText.slice(0, 300));
-      return res.status(500).json({
+      if (response.status >= 500) {
+        return res.status(502).json({
+          data: null,
+          error: {
+            code: 'GEMINI_UPSTREAM_ERROR',
+            message: 'O servidor upstream do Gemini retornou um erro interno.',
+          },
+        });
+      }
+
+      return res.status(502).json({
         data: null,
-        error: { code: 'GEMINI_ERROR', message: 'Failed to generate palette with Gemini AI.' },
+        error: {
+          code: 'GEMINI_UPSTREAM_ERROR',
+          message: 'Falha na comunicação com o serviço Gemini AI.',
+        },
       });
     }
 
-    const resJson: any = await response.json();
-    const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return res.status(500).json({
+    let resJson: any;
+    try {
+      resJson = await response.json();
+    } catch (parseErr: any) {
+      console.error('[GEMINI_PARSE] Failed to parse HTTP response as JSON:', {
+        stage: 'GEMINI_PARSE',
+        responseStatus: response.status,
+        errorMessage: parseErr?.message || String(parseErr),
+      });
+      return res.status(502).json({
         data: null,
-        error: { code: 'GEMINI_ERROR', message: 'Gemini returned an empty response.' },
+        error: {
+          code: 'GEMINI_INVALID_RESPONSE',
+          message: 'A resposta recebida do Gemini não pôde ser decodificada.',
+        },
+      });
+    }
+
+    const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      console.error('[GEMINI_PARSE] Gemini returned empty response text:', {
+        stage: 'GEMINI_PARSE',
+        responseStatus: response.status,
+        finishReason: resJson.candidates?.[0]?.finishReason,
+      });
+      return res.status(502).json({
+        data: null,
+        error: {
+          code: 'GEMINI_INVALID_RESPONSE',
+          message: 'O Gemini retornou uma resposta de conteúdo vazia.',
+        },
       });
     }
 
     let parsed: any;
     try {
       parsed = JSON.parse(text);
-    } catch (e) {
-      return res.status(500).json({
+    } catch (jsonErr: any) {
+      console.error('[GEMINI_PARSE] Failed to parse generated text content as JSON:', {
+        stage: 'GEMINI_PARSE',
+        errorMessage: jsonErr?.message || String(jsonErr),
+      });
+      return res.status(502).json({
         data: null,
-        error: { code: 'GEMINI_ERROR', message: 'Gemini response is not valid JSON.' },
+        error: {
+          code: 'GEMINI_INVALID_RESPONSE',
+          message: 'O conteúdo retornado pelo Gemini não é um JSON válido.',
+        },
       });
     }
 
     // 9. Validate Gemini response against Zod schema
     const validation = GeminiPaletteSchema.safeParse(parsed);
     if (!validation.success) {
-      return res.status(500).json({
+      console.error('[GEMINI_SCHEMA] Gemini response does not match palette schema:', {
+        stage: 'GEMINI_SCHEMA',
+        errors: validation.error.format(),
+      });
+      return res.status(502).json({
         data: null,
-        error: { code: 'GEMINI_ERROR', message: 'Gemini response does not match required palette schema.' },
+        error: {
+          code: 'GEMINI_SCHEMA_ERROR',
+          message: 'A estrutura da paleta gerada pelo Gemini é incompatível.',
+        },
       });
     }
 
@@ -229,11 +325,16 @@ export default async function handler(req: any, res: any) {
 
     // Enforce exact color count
     if (palette.colors.length !== requestData.colorCount) {
-      return res.status(500).json({
+      console.error('[GEMINI_COLOR_COUNT] Color count mismatch:', {
+        stage: 'GEMINI_COLOR_COUNT',
+        expected: requestData.colorCount,
+        received: palette.colors.length,
+      });
+      return res.status(502).json({
         data: null,
         error: {
-          code: 'GEMINI_ERROR',
-          message: `Gemini returned ${palette.colors.length} colors, expected ${requestData.colorCount}`,
+          code: 'GEMINI_SCHEMA_ERROR',
+          message: `Gemini retornou ${palette.colors.length} cores, mas o esperado era ${requestData.colorCount}.`,
         },
       });
     }
@@ -250,12 +351,15 @@ export default async function handler(req: any, res: any) {
       error: null,
     });
   } catch (err: any) {
-    // Generic controlled error without stack trace leakage
+    console.error('[GEMINI_UPSTREAM_ERROR] Unexpected error during Gemini palette generation:', {
+      stage: 'GEMINI_HTTP',
+      errorMessage: err?.message || String(err),
+    });
     return res.status(500).json({
       data: null,
       error: {
-        code: 'GEMINI_ERROR',
-        message: 'Failed to generate palette with Gemini AI.',
+        code: 'GEMINI_UPSTREAM_ERROR',
+        message: 'Falha ao processar solicitação com a IA Gemini.',
       },
     });
   }

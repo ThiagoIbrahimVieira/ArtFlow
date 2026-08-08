@@ -1,3 +1,3 @@
-import handler from './color-muse.js';
+import handler from './color-muse';
 
 export default handler;
