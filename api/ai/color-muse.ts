@@ -1,11 +1,208 @@
-import { getFirebaseAdmin } from '../_lib/firebaseAdmin';
-import { checkRateLimit } from '../_lib/rateLimit';
-import {
-  ColorMuseRequestSchema,
-  GeminiPaletteSchema,
-} from '../_lib/colorMuseSchemas';
-import { verifyFirebaseIdToken } from '../_lib/verifyIdToken';
+import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app';
+import { getAuth, Auth } from 'firebase-admin/auth';
+import { getFirestore, Firestore, Timestamp } from 'firebase-admin/firestore';
+import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { z } from 'zod';
 
+// ==========================================
+// 1. SCHEMAS
+// ==========================================
+export const ColorMuseRequestSchema = z.object({
+  medium: z.string().max(80).optional(),
+  subject: z.string().max(120).optional(),
+  mood: z.string().max(80).optional(),
+  baseColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, { message: 'Invalid hex color' })
+    .optional(),
+  colorCount: z.number().int().min(3).max(8).default(5),
+});
+
+export const PaletteColorSchema = z.object({
+  hex: z.string().regex(/^#[0-9a-fA-F]{6}$/i, { message: 'Invalid hex code format' }),
+  name: z.string().min(1).max(60),
+  role: z.string().min(1).max(60),
+});
+
+export const GeminiPaletteSchema = z.object({
+  paletteName: z.string().min(1).max(80),
+  description: z.string().min(1).max(300),
+  harmony: z.string().min(1).max(60),
+  colors: z.array(PaletteColorSchema).min(3).max(8),
+  usageTips: z.array(z.string()).min(1),
+  contrastNotes: z.array(z.string()).optional(),
+});
+
+// ==========================================
+// 2. FIREBASE ADMIN SERVICE
+// ==========================================
+interface FirebaseAdminServices {
+  db: Firestore;
+  auth: Auth;
+}
+
+let cachedServices: FirebaseAdminServices | null = null;
+
+export function getFirebaseAdmin(): FirebaseAdminServices {
+  if (cachedServices) {
+    return cachedServices;
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID?.replace(/^["']|["']$/g, '').trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.replace(/^["']|["']$/g, '').trim();
+  const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (!projectId || !clientEmail || !rawPrivateKey) {
+    throw new Error('FIREBASE_ADMIN_CONFIG_ERROR');
+  }
+
+  const privateKey = rawPrivateKey
+    .replace(/^["']|["']$/g, '')
+    .replace(/\\n/g, '\n')
+    .trim();
+
+  const validPrivateKey =
+    privateKey.includes('-----BEGIN PRIVATE KEY-----') &&
+    privateKey.includes('-----END PRIVATE KEY-----');
+
+  if (!validPrivateKey) {
+    throw new Error('FIREBASE_ADMIN_CONFIG_ERROR');
+  }
+
+  try {
+    const app =
+      getApps().length > 0
+        ? getApp()
+        : initializeApp({
+            projectId,
+            credential: cert({
+              projectId,
+              clientEmail,
+              privateKey,
+            }),
+          });
+
+    cachedServices = {
+      db: getFirestore(app),
+      auth: getAuth(app),
+    };
+
+    return cachedServices;
+  } catch (e) {
+    throw new Error('FIREBASE_ADMIN_CONFIG_ERROR');
+  }
+}
+
+// ==========================================
+// 3. TOKEN VERIFICATION
+// ==========================================
+let jwksCache: any = null;
+
+function getJWKS() {
+  if (!jwksCache) {
+    jwksCache = createRemoteJWKSet(
+      new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
+    );
+  }
+  return jwksCache;
+}
+
+export async function verifyFirebaseIdToken(idToken: string, projectId: string): Promise<{ uid: string }> {
+  const cleanProjectId = projectId.replace(/^["']|["']$/g, '').trim();
+  const { payload } = await jwtVerify(idToken, getJWKS(), {
+    issuer: `https://securetoken.google.com/${cleanProjectId}`,
+    audience: cleanProjectId,
+  });
+  if (!payload.sub) {
+    throw new Error('ID Token payload does not contain subject (sub).');
+  }
+  return { uid: payload.sub };
+}
+
+// ==========================================
+// 4. RATE LIMITING
+// ==========================================
+export async function checkRateLimit(
+  uid: string,
+  db: Firestore | null
+): Promise<{ allowed: boolean; code?: string; message?: string }> {
+  if (!uid) {
+    return { allowed: false, code: 'AUTH_REQUIRED', message: 'User ID missing.' };
+  }
+
+  if (!db) {
+    return {
+      allowed: false,
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      message: 'O controle de uso está temporariamente indisponível.',
+    };
+  }
+
+  const now = Timestamp.now();
+  const docRef = db.collection('rateLimits').doc(uid);
+
+  try {
+    await db.runTransaction(async (t) => {
+      const snap = await t.get(docRef);
+      let hourlyStart = now;
+      let dailyStart = now;
+      let hourlyCount = 0;
+      let dailyCount = 0;
+
+      if (snap.exists) {
+        const data = snap.data() || {};
+        hourlyStart = data.hourlyStart ?? now;
+        dailyStart = data.dailyStart ?? now;
+        hourlyCount = data.hourlyCount ?? 0;
+        dailyCount = data.dailyCount ?? 0;
+
+        if (now.seconds - hourlyStart.seconds >= 3600) {
+          hourlyStart = now;
+          hourlyCount = 0;
+        }
+        if (now.seconds - dailyStart.seconds >= 86400) {
+          dailyStart = now;
+          dailyCount = 0;
+        }
+      }
+
+      if (hourlyCount >= 10 || dailyCount >= 30) {
+        throw new Error('APP_RATE_LIMIT_EXCEEDED');
+      }
+
+      hourlyCount += 1;
+      dailyCount += 1;
+
+      t.set(docRef, {
+        hourlyStart,
+        dailyStart,
+        hourlyCount,
+        dailyCount,
+        updatedAt: now,
+      });
+    });
+
+    return { allowed: true };
+  } catch (e: any) {
+    if (e?.message === 'APP_RATE_LIMIT_EXCEEDED') {
+      return {
+        allowed: false,
+        code: 'APP_RATE_LIMIT_EXCEEDED',
+        message: 'ArtFlow rate limit reached (10 generations per hour or 30 per day).',
+      };
+    }
+    console.error('Rate-limit storage unavailable', e);
+    return {
+      allowed: false,
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      message: 'O controle de uso está temporariamente indisponível.',
+    };
+  }
+}
+
+// ==========================================
+// 5. SERVERLESS HANDLER
+// ==========================================
 export default async function handler(req: any, res: any) {
   // 1. Method check: POST only
   if (req.method !== 'POST') {

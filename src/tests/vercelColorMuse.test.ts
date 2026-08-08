@@ -1,24 +1,39 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+const mockJwtVerify = vi.fn();
+const mockRunTransaction = vi.fn();
+
+vi.mock('jose', () => ({
+  createRemoteJWKSet: vi.fn(() => ({})),
+  jwtVerify: (...args: any[]) => mockJwtVerify(...args),
+}));
+
+vi.mock('firebase-admin/app', () => ({
+  getApps: vi.fn(() => []),
+  getApp: vi.fn(),
+  initializeApp: vi.fn(),
+  cert: vi.fn(),
+}));
+
+vi.mock('firebase-admin/auth', () => ({
+  getAuth: vi.fn(() => ({
+    verifyIdToken: vi.fn(),
+  })),
+}));
+
+vi.mock('firebase-admin/firestore', () => ({
+  getFirestore: vi.fn(() => ({
+    collection: vi.fn(() => ({
+      doc: vi.fn(() => ({})),
+    })),
+    runTransaction: (...args: any[]) => mockRunTransaction(...args),
+  })),
+  Timestamp: {
+    now: () => ({ seconds: Math.floor(Date.now() / 1000) }),
+  },
+}));
+
 import handler from '../../api/ai/color-muse';
-
-const mockVerifyIdToken = vi.fn();
-
-// Mock verifyIdToken, firebaseAdmin, and rateLimit modules
-vi.mock('../../api/_lib/verifyIdToken', () => ({
-  verifyFirebaseIdToken: (...args: any[]) => mockVerifyIdToken(...args),
-}));
-
-vi.mock('../../api/_lib/firebaseAdmin', () => ({
-  getFirebaseAdmin: () => ({
-    db: {},
-  }),
-}));
-
-vi.mock('../../api/_lib/rateLimit', () => ({
-  checkRateLimit: vi.fn(),
-}));
-
-import { checkRateLimit } from '../../api/_lib/rateLimit';
 
 function createMockReqRes(method: string = 'POST', headers: Record<string, string> = {}, body: any = {}) {
   const req = {
@@ -58,7 +73,13 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
       FIREBASE_CLIENT_EMAIL: 'test@example.com',
       FIREBASE_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----',
     };
-    (checkRateLimit as any).mockResolvedValue({ allowed: true });
+    mockJwtVerify.mockResolvedValue({ payload: { sub: 'user-123' } });
+    mockRunTransaction.mockImplementation(async (cb: any) => {
+      return cb({
+        get: vi.fn().mockResolvedValue({ exists: false }),
+        set: vi.fn(),
+      });
+    });
   });
 
   afterEach(() => {
@@ -80,7 +101,7 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('3. Token invalid returns 401', async () => {
-    mockVerifyIdToken.mockRejectedValue(new Error('Invalid token'));
+    mockJwtVerify.mockRejectedValue(new Error('Invalid token'));
     const { req, res } = createMockReqRes('POST', { authorization: 'Bearer invalid-token' }, { medium: 'oil', subject: 'landscape', mood: 'calm', colorCount: 5 });
     await handler(req, res);
     expect(res.getStatusCode()).toBe(401);
@@ -88,7 +109,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('4. Invalid payload returns 400', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { colorCount: 999 });
     await handler(req, res);
     expect(res.getStatusCode()).toBe(400);
@@ -97,7 +117,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
 
   it('5. Secret missing or invalid admin config returns FIREBASE_ADMIN_CONFIG_ERROR (500)', async () => {
     delete process.env.FIREBASE_PROJECT_ID;
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { medium: 'oil', subject: 'landscape', mood: 'calm', colorCount: 5 });
     await handler(req, res);
     expect(res.getStatusCode()).toBe(500);
@@ -106,29 +125,15 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('5b. Invalid private key returns FIREBASE_ADMIN_CONFIG_ERROR (500)', async () => {
-    const spy = vi.spyOn(await import('../../api/_lib/firebaseAdmin'), 'getFirebaseAdmin').mockImplementation(() => {
-      throw new Error('FIREBASE_ADMIN_CONFIG_ERROR');
-    });
-
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
+    process.env.FIREBASE_PRIVATE_KEY = 'invalid-key-no-headers';
     const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { medium: 'oil', subject: 'landscape', mood: 'calm', colorCount: 5 });
     await handler(req, res);
     expect(res.getStatusCode()).toBe(500);
     expect(res.getResponse()?.error?.code).toBe('FIREBASE_ADMIN_CONFIG_ERROR');
-    spy.mockRestore();
   });
 
   it('5c. Firestore rate-limit unavailable returns 503 RATE_LIMIT_UNAVAILABLE', async () => {
-    process.env.FIREBASE_PROJECT_ID = 'valid-project';
-    process.env.FIREBASE_CLIENT_EMAIL = 'valid-email@example.com';
-    process.env.FIREBASE_PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----';
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-    (checkRateLimit as any).mockResolvedValue({
-      allowed: false,
-      code: 'RATE_LIMIT_UNAVAILABLE',
-      message: 'O controle de uso está temporariamente indisponível.',
-    });
-
+    mockRunTransaction.mockRejectedValue(new Error('Firestore connection failure'));
     const { req, res } = createMockReqRes('POST', { authorization: 'Bearer valid-token' }, { medium: 'oil', subject: 'landscape', mood: 'calm', colorCount: 5 });
     await handler(req, res);
     expect(res.getStatusCode()).toBe(503);
@@ -137,7 +142,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('6. Mocked Gemini returns valid palette', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
     const mockPalette = {
       paletteName: 'Mystic Forest',
       description: 'A deep green palette',
@@ -180,8 +184,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('7. Gemini 429 daily quota returns GEMINI_DAILY_QUOTA_EXCEEDED', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 429,
@@ -203,8 +205,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('7b. Gemini 429 rate limit returns GEMINI_RATE_LIMIT_EXCEEDED', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 429,
@@ -226,8 +226,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('7c. Gemini 400 Bad Request returns GEMINI_BAD_REQUEST', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 400,
@@ -249,8 +247,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('7d. Gemini 401/403 Auth Error returns GEMINI_AUTH_ERROR', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 403,
@@ -272,8 +268,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('7e. Gemini 404 Model Not Found returns GEMINI_MODEL_NOT_FOUND', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 404,
@@ -295,8 +289,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('7f. Gemini 500 Upstream Error returns GEMINI_UPSTREAM_ERROR', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
@@ -318,8 +310,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('7g. Invalid JSON from Gemini returns GEMINI_INVALID_RESPONSE', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -346,8 +336,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('7h. Schema mismatch or count mismatch returns GEMINI_SCHEMA_ERROR', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -374,11 +362,14 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('8. Internal rate-limit returns different code', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-    (checkRateLimit as any).mockResolvedValue({
-      allowed: false,
-      code: 'APP_RATE_LIMIT_EXCEEDED',
-      message: 'ArtFlow limit reached',
+    mockRunTransaction.mockImplementation(async (cb: any) => {
+      return cb({
+        get: vi.fn().mockResolvedValue({
+          exists: true,
+          data: () => ({ hourlyCount: 15, hourlyStart: { seconds: Math.floor(Date.now() / 1000) } }),
+        }),
+        set: vi.fn(),
+      });
     });
 
     const { req, res } = createMockReqRes(
@@ -394,8 +385,6 @@ describe('Vercel Function /api/ai/color-muse Test Suite', () => {
   });
 
   it('9 & 10. No error exposes stack trace or GEMINI_API_KEY', async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: 'user-123' });
-
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Internal unexpected error secret=KEY123'));
 
     const { req, res } = createMockReqRes(
