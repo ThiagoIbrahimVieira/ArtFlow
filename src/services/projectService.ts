@@ -13,7 +13,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Project, ProjectStatus } from '../types';
-import { HERO_ARTWORK_URL } from '../data/mockData';
 
 export interface CreateProjectInput {
   title: string;
@@ -22,6 +21,7 @@ export interface CreateProjectInput {
   status?: ProjectStatus;
   progress?: number;
   imageUrl?: string;
+  imagePath?: string | null;
   thumbnailUrl?: string | null;
   deadline?: Date | null;
 }
@@ -33,6 +33,7 @@ export interface UpdateProjectInput {
   status?: ProjectStatus;
   progress?: number;
   imageUrl?: string;
+  imagePath?: string | null;
   thumbnailUrl?: string | null;
   deadline?: Date | null;
 }
@@ -41,41 +42,43 @@ export function validateProject(input: Partial<CreateProjectInput>): { valid: bo
   if (input.title !== undefined) {
     const title = input.title.trim();
     if (title.length < 1 || title.length > 100) {
-      return { valid: false, error: 'Project title must be between 1 and 100 characters.' };
+      return { valid: false, error: 'O título do projeto deve ter entre 1 e 100 caracteres.' };
     }
   }
   if (input.category !== undefined) {
     const cat = input.category.trim();
-    if (cat.length < 1 || cat.length > 50) {
-      return { valid: false, error: 'Category must be between 1 and 50 characters.' };
+    if (cat.length < 1 || cat.length > 60) {
+      return { valid: false, error: 'A categoria deve ter entre 1 e 60 caracteres.' };
     }
   }
   if (input.description !== undefined && input.description !== null) {
     if (input.description.length > 1000) {
-      return { valid: false, error: 'Description cannot exceed 1000 characters.' };
+      return { valid: false, error: 'A descrição não pode exceder 1000 caracteres.' };
     }
   }
   if (input.progress !== undefined) {
     if (typeof input.progress !== 'number' || !Number.isInteger(input.progress) || input.progress < 0 || input.progress > 100) {
-      return { valid: false, error: 'Progress must be an integer between 0 and 100.' };
+      return { valid: false, error: 'O progresso deve ser um valor inteiro entre 0 e 100.' };
     }
   }
   const validStatuses = new Set(['idea', 'sketching', 'in_progress', 'review', 'completed', 'Sketching', 'In Progress', 'Review', 'Completed']);
   if (input.status !== undefined && !validStatuses.has(input.status)) {
-    return { valid: false, error: 'Invalid project status.' };
+    return { valid: false, error: 'Status de projeto inválido.' };
   }
   return { valid: true };
 }
 
-export function normalizeStatus(status?: ProjectStatus): ProjectStatus {
-  if (!status) return 'sketching';
+export function normalizeStatus(status?: ProjectStatus, progress?: number): ProjectStatus {
+  if (progress === 100) return 'completed';
+  if (progress === 0) return 'idea';
+  if (!status) return 'in_progress';
   const lower = status.toLowerCase().replace(/\s+/g, '_');
-  if (lower === 'in_progress' || status === 'In Progress') return 'in_progress';
-  if (lower === 'completed' || status === 'Completed') return 'completed';
-  if (lower === 'review' || status === 'Review') return 'review';
-  if (lower === 'sketching' || status === 'Sketching') return 'sketching';
+  if (lower === 'completed') return 'completed';
+  if (lower === 'in_progress') return 'in_progress';
+  if (lower === 'review') return 'review';
+  if (lower === 'sketching') return 'sketching';
   if (lower === 'idea') return 'idea';
-  return 'sketching';
+  return 'in_progress';
 }
 
 function mapDocToProject(id: string, data: any): Project {
@@ -84,10 +87,11 @@ function mapDocToProject(id: string, data: any): Project {
     title: data.title || 'Untitled Project',
     category: data.category || 'Digital Art',
     description: data.description || '',
-    status: data.status || 'sketching',
+    status: data.status || 'in_progress',
     progress: typeof data.progress === 'number' ? data.progress : 0,
-    imageUrl: data.imageUrl || data.thumbnailUrl || HERO_ARTWORK_URL,
-    thumbnailUrl: data.thumbnailUrl || data.imageUrl || HERO_ARTWORK_URL,
+    imageUrl: data.imageUrl || data.thumbnailUrl || '',
+    imagePath: data.imagePath || null,
+    thumbnailUrl: data.thumbnailUrl || data.imageUrl || '',
     deadline: data.deadline instanceof Timestamp ? data.deadline.toDate() : data.deadline || null,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
     updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,
@@ -135,14 +139,8 @@ export async function createProject(uid: string, input: CreateProjectInput): Pro
     throw new Error(validation.error || 'Invalid project data');
   }
 
-  let progress = input.progress !== undefined ? input.progress : 10;
-  let status = normalizeStatus(input.status);
-
-  if (status === 'completed') {
-    progress = 100;
-  } else if (progress === 100) {
-    status = 'completed';
-  }
+  const progress = input.progress !== undefined ? Math.max(0, Math.min(100, Math.round(input.progress))) : 0;
+  const status = normalizeStatus(input.status, progress);
 
   const docData = {
     title: input.title.trim(),
@@ -150,8 +148,9 @@ export async function createProject(uid: string, input: CreateProjectInput): Pro
     description: input.description ? input.description.trim() : '',
     status,
     progress,
-    thumbnailUrl: input.thumbnailUrl || input.imageUrl || HERO_ARTWORK_URL,
-    imageUrl: input.imageUrl || input.thumbnailUrl || HERO_ARTWORK_URL,
+    thumbnailUrl: input.thumbnailUrl || input.imageUrl || '',
+    imageUrl: input.imageUrl || input.thumbnailUrl || '',
+    imagePath: input.imagePath || null,
     deadline: input.deadline ? Timestamp.fromDate(new Date(input.deadline)) : null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -168,6 +167,7 @@ export async function createProject(uid: string, input: CreateProjectInput): Pro
     status: docData.status,
     progress: docData.progress,
     imageUrl: docData.imageUrl,
+    imagePath: docData.imagePath,
     thumbnailUrl: docData.thumbnailUrl,
     deadline: input.deadline || null,
     createdAt: new Date(),
@@ -188,24 +188,22 @@ export async function updateProject(uid: string, projectId: string, updates: Upd
   if (updates.title !== undefined) allowedUpdates.title = updates.title.trim();
   if (updates.category !== undefined) allowedUpdates.category = updates.category.trim();
   if (updates.description !== undefined) allowedUpdates.description = updates.description.trim();
-  
-  if (updates.status !== undefined) {
-    allowedUpdates.status = normalizeStatus(updates.status);
-    if (allowedUpdates.status === 'completed') {
-      allowedUpdates.progress = 100;
-    }
-  }
 
+  let targetProgress: number | undefined;
   if (updates.progress !== undefined) {
-    let p = Math.max(0, Math.min(100, Math.round(updates.progress)));
-    allowedUpdates.progress = p;
-    if (p === 100) {
-      allowedUpdates.status = 'completed';
-    }
+    targetProgress = Math.max(0, Math.min(100, Math.round(updates.progress)));
+    allowedUpdates.progress = targetProgress;
   }
 
-  if (updates.imageUrl !== undefined) allowedUpdates.imageUrl = updates.imageUrl;
-  if (updates.thumbnailUrl !== undefined) allowedUpdates.thumbnailUrl = updates.thumbnailUrl;
+  if (updates.status !== undefined || targetProgress !== undefined) {
+    allowedUpdates.status = normalizeStatus(updates.status, targetProgress);
+  }
+
+  if (updates.imageUrl !== undefined) {
+    allowedUpdates.imageUrl = updates.imageUrl;
+    allowedUpdates.thumbnailUrl = updates.thumbnailUrl || updates.imageUrl;
+  }
+  if (updates.imagePath !== undefined) allowedUpdates.imagePath = updates.imagePath;
   if (updates.deadline !== undefined) {
     allowedUpdates.deadline = updates.deadline ? Timestamp.fromDate(new Date(updates.deadline)) : null;
   }
@@ -221,11 +219,9 @@ export async function updateProjectProgress(uid: string, projectId: string, prog
   const cleanProgress = Math.round(progress);
   const updates: Record<string, any> = {
     progress: cleanProgress,
+    status: normalizeStatus(undefined, cleanProgress),
     updatedAt: serverTimestamp(),
   };
-  if (cleanProgress === 100) {
-    updates.status = 'completed';
-  }
   const docRef = doc(db, 'users', uid, 'projects', projectId);
   await updateDoc(docRef, updates);
 }

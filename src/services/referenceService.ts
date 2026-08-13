@@ -20,7 +20,10 @@ export interface SaveReferenceInput {
   source?: 'manual' | 'deviantart';
   sourceUrl?: string | null;
   artistName?: string | null;
+  artistProfileUrl?: string | null;
+  description?: string | null;
   category?: string;
+  tags?: string[];
   bookmarked?: boolean;
   deviantArtId?: string | null;
 }
@@ -33,10 +36,15 @@ function mapDocToReference(id: string, data: any): Reference {
     source: data.source || 'manual',
     sourceUrl: data.sourceUrl || null,
     artistName: data.artistName || null,
+    artistProfileUrl: data.artistProfileUrl || null,
+    description: data.description || null,
     category: data.category || 'General',
+    tags: Array.isArray(data.tags) ? data.tags : [],
     isBookmarked: data.bookmarked ?? data.isBookmarked ?? true,
     bookmarked: data.bookmarked ?? data.isBookmarked ?? true,
+    deviantArtId: data.deviantArtId || null,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+    updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,
   };
 }
 
@@ -77,14 +85,17 @@ export async function getReference(uid: string, referenceId: string): Promise<Re
 
 export async function saveReference(uid: string, input: SaveReferenceInput): Promise<Reference> {
   if (!input.title || input.title.trim().length === 0) {
-    throw new Error('Reference title is required.');
+    throw new Error('O título da referência é obrigatório.');
   }
   if (!input.imageUrl || input.imageUrl.trim().length === 0) {
-    throw new Error('Image URL is required.');
+    throw new Error('A imagem da referência é obrigatória.');
   }
 
   const existing = await listReferences(uid);
   const isDuplicate = existing.some((ref) => {
+    if (input.deviantArtId && ref.deviantArtId && ref.deviantArtId === input.deviantArtId) {
+      return true;
+    }
     if (input.sourceUrl && ref.sourceUrl && ref.sourceUrl === input.sourceUrl) {
       return true;
     }
@@ -96,7 +107,10 @@ export async function saveReference(uid: string, input: SaveReferenceInput): Pro
 
   if (isDuplicate) {
     const existingMatch = existing.find(
-      (ref) => ref.sourceUrl === input.sourceUrl || ref.imageUrl === input.imageUrl
+      (ref) =>
+        (input.deviantArtId && ref.deviantArtId === input.deviantArtId) ||
+        (input.sourceUrl && ref.sourceUrl === input.sourceUrl) ||
+        ref.imageUrl === input.imageUrl
     );
     if (existingMatch) {
       return existingMatch;
@@ -109,10 +123,14 @@ export async function saveReference(uid: string, input: SaveReferenceInput): Pro
     source: input.source || 'manual',
     sourceUrl: input.sourceUrl || null,
     artistName: input.artistName || null,
+    artistProfileUrl: input.artistProfileUrl || null,
+    description: input.description || null,
     category: input.category ? input.category.trim() : 'General',
+    tags: Array.isArray(input.tags) ? input.tags : [],
     bookmarked: input.bookmarked !== undefined ? input.bookmarked : true,
     deviantArtId: input.deviantArtId || null,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   };
 
   const colRef = collection(db, 'users', uid, 'references');
@@ -125,10 +143,15 @@ export async function saveReference(uid: string, input: SaveReferenceInput): Pro
     source: docData.source,
     sourceUrl: docData.sourceUrl,
     artistName: docData.artistName,
+    artistProfileUrl: docData.artistProfileUrl,
+    description: docData.description,
     category: docData.category,
+    tags: docData.tags,
     isBookmarked: docData.bookmarked,
     bookmarked: docData.bookmarked,
+    deviantArtId: docData.deviantArtId,
     createdAt: new Date(),
+    updatedAt: new Date(),
   };
 }
 
@@ -137,11 +160,14 @@ export async function updateReference(
   referenceId: string,
   updates: Partial<SaveReferenceInput>
 ): Promise<void> {
-  const allowed: Record<string, any> = {};
+  const allowed: Record<string, any> = {
+    updatedAt: serverTimestamp(),
+  };
   if (updates.title !== undefined) allowed.title = updates.title.trim();
   if (updates.category !== undefined) allowed.category = updates.category.trim();
   if (updates.imageUrl !== undefined) allowed.imageUrl = updates.imageUrl.trim();
   if (updates.bookmarked !== undefined) allowed.bookmarked = updates.bookmarked;
+  if (updates.description !== undefined) allowed.description = updates.description;
 
   const docRef = doc(db, 'users', uid, 'references', referenceId);
   await updateDoc(docRef, allowed);
@@ -150,7 +176,7 @@ export async function updateReference(
 export async function toggleBookmark(uid: string, referenceId: string, currentBookmarkedState: boolean): Promise<boolean> {
   const newState = !currentBookmarkedState;
   const docRef = doc(db, 'users', uid, 'references', referenceId);
-  await updateDoc(docRef, { bookmarked: newState });
+  await updateDoc(docRef, { bookmarked: newState, updatedAt: serverTimestamp() });
   return newState;
 }
 
@@ -166,7 +192,8 @@ export function searchSavedReferences(references: Reference[], queryText: string
     (ref) =>
       ref.title.toLowerCase().includes(q) ||
       ref.category.toLowerCase().includes(q) ||
-      (ref.artistName && ref.artistName.toLowerCase().includes(q))
+      (ref.artistName && ref.artistName.toLowerCase().includes(q)) ||
+      (Array.isArray(ref.tags) && ref.tags.some((t) => t.toLowerCase().includes(q)))
   );
 }
 

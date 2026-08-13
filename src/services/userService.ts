@@ -1,6 +1,9 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { UserProfile } from '../types';
+import { UserProfile, Activity } from '../types';
+import { listProjects } from './projectService';
+import { listReferences } from './referenceService';
+import { listPalettes } from './paletteService';
 
 const RESERVED_USERNAMES = new Set([
   'admin', 'administrator', 'support', 'help', 'artflow', 'official',
@@ -179,4 +182,77 @@ export async function updateUserProfile(
   await updateDoc(profileRef, allowedUpdates);
 
   return updates;
+}
+
+function formatRelativeTime(date: Date): string {
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMinutes < 1) return 'Just now';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+export async function getUserRecentActivities(uid: string): Promise<Activity[]> {
+  try {
+    const [projects, references, palettes] = await Promise.all([
+      listProjects(uid).catch(() => []),
+      listReferences(uid).catch(() => []),
+      listPalettes(uid).catch(() => []),
+    ]);
+
+    const activities: Activity[] = [];
+
+    for (const p of projects) {
+      const d = p.updatedAt ? new Date(p.updatedAt) : p.createdAt ? new Date(p.createdAt) : new Date();
+      activities.push({
+        id: `act_p_${p.id}`,
+        title: p.progress === 100 ? 'Completed project' : 'Updated project',
+        targetName: p.title,
+        time: formatRelativeTime(d),
+        thumbnail: p.imageUrl || p.thumbnailUrl || '',
+        type: 'project',
+        rawDate: d,
+      });
+    }
+
+    for (const r of references) {
+      const d = r.createdAt ? new Date(r.createdAt) : new Date();
+      activities.push({
+        id: `act_r_${r.id}`,
+        title: 'Saved reference',
+        targetName: r.title,
+        time: formatRelativeTime(d),
+        thumbnail: r.imageUrl || '',
+        type: 'reference',
+        rawDate: d,
+      });
+    }
+
+    for (const pal of palettes) {
+      const d = pal.createdAt ? new Date(pal.createdAt) : new Date();
+      activities.push({
+        id: `act_pal_${pal.id}`,
+        title: pal.generatedBy === 'gemini' ? 'Generated palette' : 'Created palette',
+        targetName: pal.name,
+        time: formatRelativeTime(d),
+        thumbnail: '',
+        type: 'palette',
+        rawDate: d,
+      });
+    }
+
+    activities.sort((a, b) => (b.rawDate?.getTime() || 0) - (a.rawDate?.getTime() || 0));
+
+    return activities.slice(0, 10);
+  } catch (err) {
+    console.error('Failed to load recent activities:', err);
+    return [];
+  }
 }

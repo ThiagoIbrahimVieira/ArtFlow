@@ -1,5 +1,11 @@
 {
   "functions": {
+    "api/ai/chat.ts": {
+      "maxDuration": 60
+    },
+    "api/upload/index.ts": {
+      "maxDuration": 60
+    },
     "api/ai/color-muse.ts": {
       "maxDuration": 60
     },

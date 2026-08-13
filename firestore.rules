@@ -26,18 +26,14 @@ service cloud.firestore {
       match /palettes/{paletteId} {
         allow read, create, update, delete: if isOwner(uid);
       }
-    }
 
-    match /projects/{projectId} {
-      allow read, create, update, delete: if signedIn();
-    }
+      match /aiConversations/{conversationId} {
+        allow read, create, update, delete: if isOwner(uid);
 
-    match /references/{referenceId} {
-      allow read, create, update, delete: if signedIn();
-    }
-
-    match /palettes/{paletteId} {
-      allow read, create, update, delete: if signedIn();
+        match /messages/{messageId} {
+          allow read, create, update, delete: if isOwner(uid);
+        }
+      }
     }
 
     match /rateLimits/{uid} {

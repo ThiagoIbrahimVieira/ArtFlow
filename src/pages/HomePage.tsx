@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Plus, Sparkles, Folder, Bookmark, Palette as PaletteIcon } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { DailyInspirationCard } from '../components/DailyInspirationCard';
@@ -7,144 +8,202 @@ import { ProjectCard } from '../components/ProjectCard';
 import { ReferenceCard } from '../components/ReferenceCard';
 import { PaletteCard } from '../components/PaletteCard';
 import { SectionHeader } from '../components/SectionHeader';
-import { MOCK_PROJECTS, MOCK_REFERENCES, MOCK_PALETTES } from '../data/mockData';
+import { ArtworkViewer, ArtworkViewerData } from '../components/artwork/ArtworkViewer';
 import { useAuth } from '../hooks/useAuth';
 import { listProjects } from '../services/projectService';
 import { listReferences } from '../services/referenceService';
 import { listPalettes } from '../services/paletteService';
-import { Project, Reference, Palette } from '../types';
+import { Project, Reference, Palette, DeviantArtArtwork } from '../types';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [promptMessage, setPromptMessage] = useState<string | null>(null);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [references, setReferences] = useState<Reference[]>([]);
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
+  // Artwork Viewer modal state
+  const [selectedArtwork, setSelectedArtwork] = useState<ArtworkViewerData | null>(null);
 
-    // Safety fallback timer so UI never gets stuck on "Loading..."
-    const timer = setTimeout(() => {
-      if (isMounted) setLoading(false);
-    }, 800);
-
-    async function loadHomeData() {
-      if (!user) {
-        if (isMounted) setLoading(false);
-        return;
-      }
-      
-      // Load projects, references, palettes concurrently without blocking each other
-      listProjects(user.uid)
-        .then((res) => {
-          if (isMounted) setProjects(res.length > 0 ? res.slice(0, 2) : MOCK_PROJECTS.slice(3, 5));
-        })
-        .catch(() => {
-          if (isMounted) setProjects(MOCK_PROJECTS.slice(3, 5));
-        });
-
-      listReferences(user.uid)
-        .then((res) => {
-          if (isMounted) setReferences(res.length > 0 ? res.slice(0, 2) : MOCK_REFERENCES.slice(0, 2));
-        })
-        .catch(() => {
-          if (isMounted) setReferences(MOCK_REFERENCES.slice(0, 2));
-        });
-
-      listPalettes(user.uid)
-        .then((res) => {
-          if (isMounted) setPalettes(res.length > 0 ? res : MOCK_PALETTES);
-        })
-        .catch(() => {
-          if (isMounted) setPalettes(MOCK_PALETTES);
-        })
-        .finally(() => {
-          if (isMounted) setLoading(false);
-        });
+  const loadHomeData = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
     }
 
-    loadHomeData();
-    return () => {
-      isMounted = false;
-      clearTimeout(timer);
-    };
-  }, [user]);
+    try {
+      setLoading(true);
+      const [projList, refList, palList] = await Promise.all([
+        listProjects(user.uid).catch(() => []),
+        listReferences(user.uid).catch(() => []),
+        listPalettes(user.uid).catch(() => []),
+      ]);
 
-  const paletteOfDay = palettes[0] || MOCK_PALETTES[0];
-
-  const handleViewPrompt = () => {
-    setPromptMessage("Daily Challenge: Use warm ochres, burned siennas, terracotta, and soft creams to draw a character with autumn lighting!");
-    setTimeout(() => setPromptMessage(null), 5000);
+      setProjects(projList);
+      setReferences(refList);
+      setPalettes(palList);
+    } catch (err) {
+      console.warn('Error loading home data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  useEffect(() => {
+    loadHomeData();
+  }, [user]);
+
+  const handleSelectDailyArtwork = (art: DeviantArtArtwork) => {
+    const isSaved = references.some((r) => r.sourceUrl === art.sourceUrl || (r.deviantArtId && r.deviantArtId === art.id));
+    setSelectedArtwork({
+      id: art.id,
+      title: art.title,
+      imageUrl: art.thumbnailUrl,
+      artist: art.artist,
+      artistProfileUrl: art.artistProfileUrl,
+      sourceUrl: art.sourceUrl,
+      category: art.category,
+      description: art.description,
+      tags: art.tags,
+      publishedTime: art.publishedTime,
+      source: 'deviantart',
+      isSaved,
+    });
+  };
+
+  const handleSelectSavedReference = (ref: Reference) => {
+    setSelectedArtwork({
+      id: ref.id,
+      title: ref.title,
+      imageUrl: ref.imageUrl,
+      artist: ref.artistName,
+      artistProfileUrl: ref.artistProfileUrl,
+      sourceUrl: ref.sourceUrl,
+      category: ref.category,
+      description: ref.description,
+      tags: ref.tags,
+      source: ref.source || 'manual',
+      isSaved: true,
+    });
+  };
+
+  const paletteOfDay = palettes[0] || null;
+
   return (
-    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] mx-auto relative pb-24">
+    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-24 text-left">
       <AppHeader />
 
       <main className="px-4 sm:px-5 space-y-6 pt-1">
-        {/* Daily Inspiration Toast notification if active */}
-        {promptMessage && (
-          <div className="p-3 bg-[#D9B98D] text-[#191715] text-xs font-sans rounded-2xl shadow-lg border border-[#F1E2CB] animate-fade-in">
-            {promptMessage}
-          </div>
-        )}
-
-        {/* Hero Daily Inspiration */}
+        {/* Real Daily Deviations Inspiration Carousel */}
         <section>
-          <DailyInspirationCard onViewPrompt={handleViewPrompt} />
+          <DailyInspirationCard onSelectArtwork={handleSelectDailyArtwork} />
         </section>
 
-        {/* Active Projects */}
+        {/* Active Projects (User-only, no mocks) */}
         <section>
           <SectionHeader
-            title="Active Projects"
+            title="Projetos Ativos"
             onActionClick={() => navigate('/projects')}
           />
           {loading ? (
-            <div className="py-6 text-center text-xs text-[#A99D8E]">Loading projects...</div>
-          ) : (
+            <div className="py-6 text-center text-xs text-[#A99D8E]">Carregando projetos...</div>
+          ) : projects.length > 0 ? (
             <div className="flex gap-3.5 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:-mx-5 sm:px-5">
-              {projects.map((proj) => (
+              {projects.slice(0, 4).map((proj) => (
                 <ProjectCard
                   key={proj.id}
                   project={proj}
                   variant="compact"
+                  onMoreClick={() => navigate('/projects')}
                 />
               ))}
             </div>
-          )}
-        </section>
-
-        {/* Recent References */}
-        <section>
-          <SectionHeader
-            title="Recent References"
-            onActionClick={() => navigate('/references')}
-          />
-          {loading ? (
-            <div className="py-6 text-center text-xs text-[#A99D8E]">Loading references...</div>
           ) : (
-            <div className="grid grid-cols-2 gap-3.5">
-              {references.map((ref) => (
-                <ReferenceCard key={ref.id} reference={ref} />
-              ))}
+            <div className="p-5 rounded-2xl bg-[#272320]/60 border border-[#3A332C] text-center space-y-2.5">
+              <Folder className="w-6 h-6 text-[#A99D8E] mx-auto opacity-60" />
+              <p className="text-xs font-sans text-[#A99D8E]">
+                Você ainda não criou nenhum projeto.
+              </p>
+              <button
+                onClick={() => navigate('/projects')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#272320] border border-[#433D37] rounded-full text-xs font-sans font-medium text-[#D9B98D] hover:bg-[#332E2A] transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Novo Projeto</span>
+              </button>
             </div>
           )}
         </section>
 
-        {/* Palette of the Day */}
+        {/* Recent References (User-only, no mocks) */}
         <section>
           <SectionHeader
-            title="Palette of the Day"
+            title="Referências Recentes"
+            onActionClick={() => navigate('/references')}
+          />
+          {loading ? (
+            <div className="py-6 text-center text-xs text-[#A99D8E]">Carregando referências...</div>
+          ) : references.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3.5">
+              {references.slice(0, 4).map((ref) => (
+                <div key={ref.id} onClick={() => handleSelectSavedReference(ref)} className="cursor-pointer">
+                  <ReferenceCard reference={ref} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-5 rounded-2xl bg-[#272320]/60 border border-[#3A332C] text-center space-y-2.5">
+              <Bookmark className="w-6 h-6 text-[#A99D8E] mx-auto opacity-60" />
+              <p className="text-xs font-sans text-[#A99D8E]">
+                Nenhuma referência salva ainda.
+              </p>
+              <button
+                onClick={() => navigate('/references')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#272320] border border-[#433D37] rounded-full text-xs font-sans font-medium text-[#D9B98D] hover:bg-[#332E2A] transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Explorar Referências</span>
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Palettes Section */}
+        <section>
+          <SectionHeader
+            title="Paletas de Cores"
             onActionClick={() => navigate('/palettes')}
           />
-          <PaletteCard palette={paletteOfDay} isFeatured />
+          {paletteOfDay ? (
+            <PaletteCard palette={paletteOfDay} isFeatured />
+          ) : (
+            <div className="p-5 rounded-2xl bg-[#272320]/60 border border-[#3A332C] text-center space-y-2.5">
+              <PaletteIcon className="w-6 h-6 text-[#A99D8E] mx-auto opacity-60" />
+              <p className="text-xs font-sans text-[#A99D8E]">
+                Crie ou gere sua primeira paleta com ArtFlow AI.
+              </p>
+              <button
+                onClick={() => navigate('/ai?intent=create_palette')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#D9B98D] text-[#191715] rounded-full text-xs font-sans font-medium hover:bg-[#E8DAC7] transition-colors shadow-sm"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Criar com ArtFlow AI</span>
+              </button>
+            </div>
+          )}
         </section>
       </main>
+
+      {/* Artwork Detailed Modal Viewer */}
+      {selectedArtwork && (
+        <ArtworkViewer
+          artwork={selectedArtwork}
+          onClose={() => setSelectedArtwork(null)}
+          onReferenceSaved={loadHomeData}
+        />
+      )}
 
       <BottomNavigation />
     </div>

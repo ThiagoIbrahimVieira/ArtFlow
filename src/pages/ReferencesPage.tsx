@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, LayoutGrid, Sparkles, Plus, X } from 'lucide-react';
+import { Search, LayoutGrid, Sparkles, Plus, X, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { CategoryChip } from '../components/CategoryChip';
 import { ReferenceCard } from '../components/ReferenceCard';
 import { SectionHeader } from '../components/SectionHeader';
-import { MOCK_REFERENCES } from '../data/mockData';
+import { ArtworkViewer, ArtworkViewerData } from '../components/artwork/ArtworkViewer';
 import { Reference, DeviantArtArtwork } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -15,8 +15,22 @@ import {
   searchSavedReferences,
   filterReferencesByCategory,
 } from '../services/referenceService';
+import { deviantArtProvider } from '../services/deviantArtProvider';
+import { uploadImageFile } from '../services/uploadService';
 
-const CATEGORIES = ['All', 'Characters', 'Landscapes', 'Poses', 'Color'];
+const CATEGORIES = ['All', 'Characters', 'Landscapes', 'Poses', 'Color', 'Concept Art'];
+
+const SEARCH_SUGGESTIONS = [
+  { label: 'Trem', query: 'trem' },
+  { label: 'Locomotiva', query: 'locomotiva' },
+  { label: 'Ferrovia', query: 'ferrovia' },
+  { label: 'Dragão', query: 'dragao' },
+  { label: 'Castelo', query: 'castelo' },
+  { label: 'Paisagem', query: 'paisagem' },
+  { label: 'Floresta', query: 'floresta' },
+  { label: 'Guerreiro', query: 'guerreiro' },
+  { label: 'Robô', query: 'robo' },
+];
 
 export const ReferencesPage: React.FC = () => {
   const { user } = useAuth();
@@ -32,13 +46,22 @@ export const ReferencesPage: React.FC = () => {
   const [daArtworks, setDaArtworks] = useState<DeviantArtArtwork[]>([]);
   const [daLoading, setDaLoading] = useState(false);
   const [daError, setDaError] = useState<string | null>(null);
+  const [hasSearchedDa, setHasSearchedDa] = useState(false);
 
   // Manual Add Reference modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [uploadTab, setUploadTab] = useState<'upload' | 'url'>('upload');
   const [newCategory, setNewCategory] = useState('Characters');
+  const [newTags, setNewTags] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  // Artwork Detailed Viewer
+  const [selectedArtwork, setSelectedArtwork] = useState<ArtworkViewerData | null>(null);
 
   const fetchUserReferences = async () => {
     if (!user) return;
@@ -56,31 +79,7 @@ export const ReferencesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    let isMounted = true;
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    listReferences(user.uid)
-      .then((data) => {
-        if (isMounted) {
-          setReferences(data);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          console.error('Failed to list references:', err);
-          setError('Não foi possível carregar as referências. Verifique sua conexão.');
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    fetchUserReferences();
   }, [user]);
 
   const handleBookmarkToggle = async (id: string) => {
@@ -91,7 +90,7 @@ export const ReferencesPage: React.FC = () => {
     // Optimistic UI update
     setReferences((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, isBookmarked: !item.isBookmarked } : item
+        item.id === id ? { ...item, isBookmarked: !item.isBookmarked, bookmarked: !item.isBookmarked } : item
       )
     );
 
@@ -99,10 +98,9 @@ export const ReferencesPage: React.FC = () => {
       await toggleBookmark(user.uid, id, target.isBookmarked);
     } catch (err) {
       console.error('Failed to toggle bookmark:', err);
-      // Revert optimistic update on failure
       setReferences((prev) =>
         prev.map((item) =>
-          item.id === id ? { ...item, isBookmarked: target.isBookmarked } : item
+          item.id === id ? { ...item, isBookmarked: target.isBookmarked, bookmarked: target.isBookmarked } : item
         )
       );
     }
@@ -111,31 +109,12 @@ export const ReferencesPage: React.FC = () => {
   const handleFetchDeviantArt = async (q: string = '') => {
     setDaLoading(true);
     setDaError(null);
+    setHasSearchedDa(true);
     try {
-      const idToken = user ? await user.getIdToken() : '';
-      const params = new URLSearchParams();
-      if (q) params.set('query', q);
-      if (selectedCategory !== 'All') params.set('category', selectedCategory);
-
-      const res = await fetch(`/api/deviantart/inspiration?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
-      });
-
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        throw new Error('Serviço DeviantArt (Backend Cloud Functions) ainda não publicado na Vercel.');
-      }
-
-      const json = await res.json();
-      if (!res.ok || json.error) {
-        throw new Error(json.error?.message || 'Failed to fetch DeviantArt inspiration');
-      }
-
-      setDaArtworks(json.data?.items || []);
+      const items = await deviantArtProvider.searchArtworks(q, selectedCategory !== 'All' ? selectedCategory : undefined);
+      setDaArtworks(items);
     } catch (err: any) {
-      setDaError(err?.message || 'DeviantArt service currently unavailable.');
+      setDaError(err?.message || 'Serviço DeviantArt temporariamente indisponível.');
     } finally {
       setDaLoading(false);
     }
@@ -143,7 +122,8 @@ export const ReferencesPage: React.FC = () => {
 
   const [savedDaIds, setSavedDaIds] = useState<Record<string, boolean>>({});
 
-  const handleSaveDeviantArtReference = async (art: DeviantArtArtwork) => {
+  const handleSaveDeviantArtReference = async (art: DeviantArtArtwork, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!user) return;
     try {
       setSavedDaIds((prev) => ({ ...prev, [art.id]: true }));
@@ -157,6 +137,9 @@ export const ReferencesPage: React.FC = () => {
         source: 'deviantart',
         sourceUrl: art.sourceUrl,
         artistName: art.artist,
+        artistProfileUrl: art.artistProfileUrl,
+        description: art.description,
+        tags: art.tags,
         category: targetCategory,
         bookmarked: true,
         deviantArtId: art.id,
@@ -165,20 +148,74 @@ export const ReferencesPage: React.FC = () => {
       setReferences((prev) => [saved, ...prev.filter((r) => r.id !== saved.id)]);
     } catch (err: any) {
       setSavedDaIds((prev) => ({ ...prev, [art.id]: false }));
-      alert(err?.message || 'Failed to save reference.');
+      console.error('Failed to save reference:', err);
     }
+  };
+
+  const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setModalError('Formato inválido. Use JPEG, PNG ou WebP.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setModalError('A imagem deve ter no máximo 5 MB.');
+      return;
+    }
+
+    setModalError(null);
+    setSelectedFile(file);
+    setFilePreview(URL.createObjectURL(file));
   };
 
   const handleAddManualReference = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newTitle.trim() || !newImageUrl.trim()) return;
+    if (!user || !newTitle.trim()) return;
 
+    setModalError(null);
     setIsSaving(true);
+
     try {
+      let finalImageUrl = newImageUrl.trim();
+
+      if (uploadTab === 'upload') {
+        if (!selectedFile) {
+          setModalError('Por favor, selecione um arquivo de imagem.');
+          setIsSaving(false);
+          return;
+        }
+
+        try {
+          const uploadRes = await uploadImageFile(selectedFile, 'references');
+          finalImageUrl = uploadRes.url;
+        } catch (uploadErr: any) {
+          if (uploadErr?.message?.includes('Vercel Blob') || uploadErr?.message?.includes('não configurado')) {
+            setModalError('Armazenamento de imagens (Vercel Blob) ainda não configurado.');
+            setIsSaving(false);
+            return;
+          }
+          throw uploadErr;
+        }
+      } else {
+        if (!finalImageUrl) {
+          setModalError('A URL da imagem é obrigatória.');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      const tagsArray = newTags
+        .split(',')
+        .map((t) => t.trim().replace(/^#/, ''))
+        .filter(Boolean);
+
       const saved = await saveReference(user.uid, {
-        title: newTitle,
-        imageUrl: newImageUrl,
-        category: newCategory,
+        title: newTitle.trim(),
+        imageUrl: finalImageUrl,
+        category: newCategory.trim(),
+        tags: tagsArray,
         source: 'manual',
         bookmarked: true,
       });
@@ -186,19 +223,56 @@ export const ReferencesPage: React.FC = () => {
       setReferences((prev) => [saved, ...prev]);
       setNewTitle('');
       setNewImageUrl('');
+      setSelectedFile(null);
+      setFilePreview(null);
+      setNewTags('');
       setIsAddModalOpen(false);
     } catch (err: any) {
-      alert(err?.message || 'Failed to save manual reference.');
+      setModalError(err?.message || 'Falha ao salvar referência.');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const openViewerForRef = (ref: Reference) => {
+    setSelectedArtwork({
+      id: ref.id,
+      title: ref.title,
+      imageUrl: ref.imageUrl,
+      artist: ref.artistName,
+      artistProfileUrl: ref.artistProfileUrl,
+      sourceUrl: ref.sourceUrl,
+      category: ref.category,
+      description: ref.description,
+      tags: ref.tags,
+      source: ref.source || 'manual',
+      isSaved: true,
+    });
+  };
+
+  const openViewerForDa = (art: DeviantArtArtwork) => {
+    const isSaved = references.some((r) => r.sourceUrl === art.sourceUrl || (r.deviantArtId && r.deviantArtId === art.id));
+    setSelectedArtwork({
+      id: art.id,
+      title: art.title,
+      imageUrl: art.thumbnailUrl,
+      artist: art.artist,
+      artistProfileUrl: art.artistProfileUrl,
+      sourceUrl: art.sourceUrl,
+      category: art.category,
+      description: art.description,
+      tags: art.tags,
+      publishedTime: art.publishedTime,
+      source: 'deviantart',
+      isSaved,
+    });
   };
 
   const filteredByCategory = filterReferencesByCategory(references, selectedCategory);
   const filteredReferences = searchSavedReferences(filteredByCategory, searchQuery);
 
   return (
-    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] mx-auto relative pb-24">
+    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-24 text-left">
       <AppHeader />
 
       <main className="px-4 sm:px-5 space-y-4 pt-1">
@@ -208,36 +282,38 @@ export const ReferencesPage: React.FC = () => {
             <Search className="absolute left-3.5 w-4 h-4 text-[#A99D8E]" />
             <input
               type="text"
-              placeholder="Search references"
+              placeholder="Pesquisar referências salvas..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm font-sans bg-[#272320] border border-[#3A332C] rounded-2xl text-[#F1E2CB] placeholder-[#A99D8E] focus:outline-none focus:border-[#514940] transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm font-sans bg-[#272320] border border-[#3A332C] rounded-2xl text-[#F1E2CB] placeholder-[#A99D8E] focus:outline-none focus:border-[#D9B98D] transition-colors"
             />
           </div>
 
           {/* Add Manual Reference */}
           <button
             onClick={() => setIsAddModalOpen(true)}
-            aria-label="Add Reference"
-            className="p-2.5 rounded-2xl bg-[#272320] border border-[#3A332C] text-[#F1E2CB] hover:bg-[#332E2A] transition-colors"
+            aria-label="Adicionar Referência"
+            className="p-2.5 rounded-2xl bg-[#272320] border border-[#3A332C] text-[#F1E2CB] hover:bg-[#332E2A] transition-colors shadow-sm"
+            title="Adicionar referência"
           >
             <Plus className="w-5 h-5" />
           </button>
 
-          {/* DeviantArt Inspiration */}
+          {/* DeviantArt Search */}
           <button
             onClick={() => {
               setIsDaModalOpen(true);
-              handleFetchDeviantArt();
+              handleFetchDeviantArt(daQuery);
             }}
-            aria-label="DeviantArt Inspiration"
+            aria-label="Explorar DeviantArt"
             className="p-2.5 rounded-2xl bg-[#D9B98D] text-[#191715] hover:bg-[#E8DAC7] transition-colors shadow-sm"
+            title="Buscar arte no DeviantArt"
           >
             <Sparkles className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Horizontal Category Chips */}
+        {/* Category Chips */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:-mx-5 sm:px-5">
           {CATEGORIES.map((cat) => (
             <CategoryChip
@@ -252,7 +328,7 @@ export const ReferencesPage: React.FC = () => {
         {/* Saved References Section Header */}
         <div className="pt-2">
           <SectionHeader
-            title="Saved References"
+            title="Referências Salvas"
             rightElement={
               <div className="p-1.5 rounded-lg bg-[#272320] border border-[#3A332C] text-[#D9B98D]">
                 <LayoutGrid className="w-4 h-4" />
@@ -263,7 +339,7 @@ export const ReferencesPage: React.FC = () => {
           {/* 2-Column Responsive Grid */}
           {loading ? (
             <div className="py-12 text-center text-[#A99D8E] text-xs">
-              Loading references...
+              Carregando referências...
             </div>
           ) : error ? (
             <div className="py-12 text-center space-y-3">
@@ -278,112 +354,39 @@ export const ReferencesPage: React.FC = () => {
           ) : filteredReferences.length > 0 ? (
             <div className="grid grid-cols-2 gap-3.5">
               {filteredReferences.map((ref) => (
-                <ReferenceCard
+                <div
                   key={ref.id}
-                  reference={ref}
-                  onBookmarkToggle={handleBookmarkToggle}
-                />
+                  onClick={() => openViewerForRef(ref)}
+                  className="cursor-pointer"
+                >
+                  <ReferenceCard
+                    reference={ref}
+                    onBookmarkToggle={handleBookmarkToggle}
+                  />
+                </div>
               ))}
             </div>
           ) : (
-            <div className="py-12 text-center text-[#A99D8E]">
-              <p className="text-sm font-sans">No references found</p>
+            <div className="py-12 text-center text-[#A99D8E] space-y-2">
+              <p className="text-sm font-sans">Nenhuma referência encontrada.</p>
+              <p className="text-xs font-sans text-[#7A7165]">
+                Use o botão "+" para adicionar ou o botão "✨" para buscar no DeviantArt.
+              </p>
             </div>
           )}
         </div>
       </main>
 
-      {/* Manual Add Reference Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-[360px] bg-[#272320] border border-[#433D37] rounded-3xl p-5 text-[#F1E2CB] shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#3A332C] pb-3">
-              <h3 className="font-serif text-[20px] font-normal text-[#F1E2CB]">
-                Add Reference
-              </h3>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="text-[#A99D8E] hover:text-[#F1E2CB] p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddManualReference} className="space-y-3.5 pt-1">
-              <div>
-                <label className="block text-xs font-sans text-[#A99D8E] mb-1">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Anomaly Study"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-sans text-[#A99D8E] mb-1">
-                  Image URL
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://..."
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-sans text-[#A99D8E] mb-1">
-                  Category
-                </label>
-                <select
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D]"
-                >
-                  <option value="Characters">Characters</option>
-                  <option value="Landscapes">Landscapes</option>
-                  <option value="Poses">Poses</option>
-                  <option value="Color">Color</option>
-                </select>
-              </div>
-
-              <div className="pt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex-1 py-2.5 rounded-full bg-[#F1E2CB] text-[#191715] font-semibold text-xs font-sans hover:bg-[#D9B98D]"
-                >
-                  {isSaving ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* DeviantArt Inspiration Modal */}
+      {/* DeviantArt Search / Inspiration Modal */}
       {isDaModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-[420px] max-h-[85vh] bg-[#272320] border border-[#433D37] rounded-3xl p-4 sm:p-5 text-[#F1E2CB] shadow-2xl flex flex-col space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-[460px] max-h-[88vh] bg-[#272320] border border-[#433D37] rounded-3xl p-4 sm:p-5 text-[#F1E2CB] shadow-2xl flex flex-col space-y-3">
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-[#3A332C] pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#D9B98D]" />
                 <h3 className="font-serif text-[20px] font-normal text-[#F1E2CB]">
-                  DeviantArt Inspiration
+                  Pesquisa no DeviantArt
                 </h3>
               </div>
               <button
@@ -394,10 +397,11 @@ export const ReferencesPage: React.FC = () => {
               </button>
             </div>
 
+            {/* Search Input with Query Expansion */}
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Search DeviantArt artwork..."
+                placeholder="ex: trem de carga, dragão, castelo..."
                 value={daQuery}
                 onChange={(e) => setDaQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleFetchDeviantArt(daQuery)}
@@ -405,63 +409,252 @@ export const ReferencesPage: React.FC = () => {
               />
               <button
                 onClick={() => handleFetchDeviantArt(daQuery)}
-                className="px-3 py-2 bg-[#D9B98D] text-[#191715] text-xs font-sans font-medium rounded-xl hover:bg-[#E8DAC7]"
+                disabled={daLoading}
+                className="px-3.5 py-2 bg-[#D9B98D] text-[#191715] text-xs font-sans font-medium rounded-xl hover:bg-[#E8DAC7] disabled:opacity-50 transition-colors shadow-sm"
               >
-                Search
+                {daLoading ? 'Buscando...' : 'Buscar'}
               </button>
             </div>
 
+            {/* Suggestion Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <span className="text-[10px] text-[#7A7165] flex-shrink-0">Sugestões:</span>
+              {SEARCH_SUGGESTIONS.map((sug) => (
+                <button
+                  key={sug.label}
+                  type="button"
+                  onClick={() => {
+                    setDaQuery(sug.query);
+                    handleFetchDeviantArt(sug.query);
+                  }}
+                  className="px-2 py-0.5 rounded-lg text-[10px] bg-[#191715] hover:bg-[#332E2A] text-[#A99D8E] hover:text-[#F1E2CB] border border-[#3A332C] transition-colors flex-shrink-0"
+                >
+                  {sug.label}
+                </button>
+              ))}
+            </div>
+
             {daError && (
-              <div className="p-3 bg-red-900/30 border border-red-500/40 rounded-xl text-red-200 text-xs">
+              <div className="p-3 bg-red-900/40 border border-red-500/40 rounded-xl text-red-200 text-xs font-sans">
                 {daError}
               </div>
             )}
 
+            {/* Results Grid */}
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pt-1 pr-1">
               {daLoading ? (
-                <div className="py-12 text-center text-xs text-[#A99D8E]">
-                  Fetching artwork from DeviantArt...
+                <div className="py-12 text-center text-xs text-[#A99D8E] flex flex-col items-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#D9B98D]" />
+                  <span>Buscando artes visuais no DeviantArt...</span>
                 </div>
               ) : daArtworks.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3">
                   {daArtworks.map((art) => (
                     <div
                       key={art.id}
-                      className="bg-[#191715] rounded-xl overflow-hidden border border-[#3A332C] flex flex-col justify-between"
+                      onClick={() => openViewerForDa(art)}
+                      className="bg-[#191715] rounded-xl overflow-hidden border border-[#3A332C] flex flex-col justify-between cursor-pointer hover:border-[#D9B98D]/60 transition-colors group"
                     >
-                      <div className="relative aspect-square overflow-hidden">
+                      <div className="relative aspect-square overflow-hidden bg-black/40">
                         <img
                           src={art.thumbnailUrl}
                           alt={art.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                       <div className="p-2 text-left">
                         <h5 className="font-serif text-xs text-[#F1E2CB] truncate">{art.title}</h5>
-                        <p className="text-[10px] font-sans text-[#A99D8E] truncate">by {art.artist}</p>
+                        <p className="text-[10px] font-sans text-[#A99D8E] truncate">por {art.artist}</p>
                         <button
-                          onClick={() => handleSaveDeviantArtReference(art)}
+                          type="button"
+                          onClick={(e) => handleSaveDeviantArtReference(art, e)}
                           disabled={Boolean(savedDaIds[art.id])}
-                          className={`mt-2 w-full py-1 text-[11px] rounded-lg transition-colors ${
+                          className={`mt-2 w-full py-1 text-[11px] font-sans font-medium rounded-lg transition-colors ${
                             savedDaIds[art.id]
-                              ? 'bg-[#3A332C] text-[#E0C9A6] border border-[#52483E] cursor-default'
+                              ? 'bg-[#3A332C] text-[#D9B98D] border border-[#52483E] cursor-default'
                               : 'bg-[#272320] border border-[#433D37] text-[#D9B98D] hover:bg-[#332E2A]'
                           }`}
                         >
-                          {savedDaIds[art.id] ? 'Saved ✓' : 'Save Reference'}
+                          {savedDaIds[art.id] ? 'Salva ✓' : 'Salvar Referência'}
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="py-12 text-center text-xs text-[#A99D8E]">
-                  No DeviantArt artworks available. Try another search query!
+                <div className="py-12 text-center text-xs text-[#A99D8E] space-y-2">
+                  {hasSearchedDa ? (
+                    <>
+                      <p>Nenhuma arte encontrada para "{daQuery}".</p>
+                      <p className="text-[10px] text-[#7A7165]">
+                        Experimente buscar por termos sugeridos como "Trem", "Locomotiva" ou "Dragão".
+                      </p>
+                    </>
+                  ) : (
+                    <p>Digite um termo ou clique em uma sugestão acima para pesquisar.</p>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Manual Add Reference Modal with Upload & URL tabs */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar">
+          <div className="w-full max-w-[380px] max-h-[90vh] bg-[#272320] border border-[#433D37] rounded-3xl p-5 text-[#F1E2CB] shadow-2xl space-y-4 my-auto text-left">
+            <div className="flex items-center justify-between border-b border-[#3A332C] pb-3">
+              <h3 className="font-serif text-[20px] font-normal text-[#F1E2CB]">
+                Nova Referência
+              </h3>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-[#A99D8E] hover:text-[#F1E2CB] p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {modalError && (
+              <div className="p-3 bg-red-900/40 border border-red-500/40 rounded-xl text-red-200 text-xs font-sans">
+                {modalError}
+              </div>
+            )}
+
+            {/* Tab switch: Upload vs URL */}
+            <div className="flex bg-[#191715] p-1 rounded-xl border border-[#3A332C]">
+              <button
+                type="button"
+                onClick={() => setUploadTab('upload')}
+                className={`flex-1 py-1.5 text-xs font-sans font-medium rounded-lg transition-colors ${
+                  uploadTab === 'upload' ? 'bg-[#272320] text-[#F1E2CB] shadow-sm' : 'text-[#A99D8E]'
+                }`}
+              >
+                Enviar Imagem
+              </button>
+              <button
+                type="button"
+                onClick={() => setUploadTab('url')}
+                className={`flex-1 py-1.5 text-xs font-sans font-medium rounded-lg transition-colors ${
+                  uploadTab === 'url' ? 'bg-[#272320] text-[#F1E2CB] shadow-sm' : 'text-[#A99D8E]'
+                }`}
+              >
+                URL da Web
+              </button>
+            </div>
+
+            <form onSubmit={handleAddManualReference} className="space-y-3.5 pt-1">
+              <div>
+                <label className="block text-xs font-sans text-[#A99D8E] mb-1 font-medium">
+                  Título da Referência *
+                </label>
+                <input
+                  type="text"
+                  placeholder="ex: Estudo de Anatomia e Pose"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D]"
+                  required
+                />
+              </div>
+
+              {uploadTab === 'upload' ? (
+                <div>
+                  <label className="block text-xs font-sans text-[#A99D8E] mb-1 font-medium">
+                    Imagem (JPEG, PNG, WebP até 5MB)
+                  </label>
+                  {filePreview ? (
+                    <div className="relative w-full h-32 rounded-xl overflow-hidden bg-[#191715] border border-[#3A332C] group">
+                      <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
+                      <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity text-xs text-[#F1E2CB] font-sans gap-1.5">
+                        <Upload className="w-4 h-4 text-[#D9B98D]" />
+                        <span>Trocar imagem</span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelection} className="sr-only" />
+                      </label>
+                    </div>
+                  ) : (
+                    <label className="w-full h-24 rounded-xl border-2 border-dashed border-[#433D37] hover:border-[#D9B98D] bg-[#191715] flex flex-col items-center justify-center cursor-pointer p-3 transition-colors text-center">
+                      <ImageIcon className="w-5 h-5 text-[#A99D8E] mb-1" />
+                      <span className="text-xs font-sans text-[#F1E2CB]">Selecionar arquivo do dispositivo</span>
+                      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileSelection} className="sr-only" />
+                    </label>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-sans text-[#A99D8E] mb-1 font-medium">
+                    URL da Imagem *
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={newImageUrl}
+                    onChange={(e) => setNewImageUrl(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D]"
+                    required={uploadTab === 'url'}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-sans text-[#A99D8E] mb-1 font-medium">
+                  Categoria
+                </label>
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D]"
+                >
+                  <option value="Characters">Characters</option>
+                  <option value="Landscapes">Landscapes</option>
+                  <option value="Poses">Poses</option>
+                  <option value="Color">Color</option>
+                  <option value="Concept Art">Concept Art</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-sans text-[#A99D8E] mb-1 font-medium">
+                  Tags (separadas por vírgula)
+                </label>
+                <input
+                  type="text"
+                  placeholder="ex: armadura, espada, iluminação"
+                  value={newTags}
+                  onChange={(e) => setNewTags(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D]"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E] hover:bg-[#332E2A]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 py-2.5 rounded-full bg-[#D9B98D] text-[#191715] font-semibold text-xs font-sans hover:bg-[#E8DAC7] disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  {isSaving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Detailed Artwork Viewer */}
+      {selectedArtwork && (
+        <ArtworkViewer
+          artwork={selectedArtwork}
+          onClose={() => setSelectedArtwork(null)}
+          onReferenceSaved={fetchUserReferences}
+        />
       )}
 
       <BottomNavigation />
