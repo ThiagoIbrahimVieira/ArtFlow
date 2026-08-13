@@ -1,11 +1,23 @@
 import { put } from '@vercel/blob';
-import { verifyFirebaseIdToken } from '../_lib/verifyIdToken';
+import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 export const config = {
   api: {
     bodyParser: false, // Handle raw stream for file upload
   },
 };
+
+const JWKS = createRemoteJWKSet(
+  new URL('https://www.googleapis.com/robot/v1/metadata/jwk/securetoken@system.gserviceaccount.com')
+);
+
+async function verifyFirebaseIdToken(token: string, expectedProjectId: string) {
+  const { payload } = await jwtVerify(token, JWKS, {
+    issuer: `https://securetoken.google.com/${expectedProjectId}`,
+    audience: expectedProjectId,
+  });
+  return { uid: payload.sub as string, email: payload.email as string | undefined };
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
