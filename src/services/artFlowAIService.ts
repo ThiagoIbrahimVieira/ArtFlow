@@ -94,10 +94,15 @@ export async function sendArtFlowAIMessage(
 export async function listAIConversations(uid: string): Promise<AIConversation[]> {
   try {
     const colRef = collection(db, 'users', uid, 'aiConversations');
-    const q = query(colRef, orderBy('updatedAt', 'desc'), limit(20));
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      const q = query(colRef, orderBy('updatedAt', 'desc'), limit(25));
+      snap = await getDocs(q);
+    } catch {
+      snap = await getDocs(colRef);
+    }
 
-    return snap.docs.map((d) => {
+    const list = snap.docs.map((d) => {
       const data = d.data();
       return {
         id: d.id,
@@ -107,6 +112,8 @@ export async function listAIConversations(uid: string): Promise<AIConversation[]
         lastMessagePreview: data.lastMessagePreview || '',
       };
     });
+
+    return list.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   } catch (err) {
     console.warn('Failed to list AI conversations:', err);
     return [];
@@ -119,14 +126,19 @@ export async function getConversationMessages(
 ): Promise<AIMessage[]> {
   try {
     const messagesRef = collection(db, 'users', uid, 'aiConversations', conversationId, 'messages');
-    const q = query(messagesRef, orderBy('createdAt', 'asc'), limit(50));
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      const q = query(messagesRef, orderBy('createdAt', 'asc'), limit(50));
+      snap = await getDocs(q);
+    } catch {
+      snap = await getDocs(messagesRef);
+    }
 
-    return snap.docs.map((d) => {
+    const list = snap.docs.map((d) => {
       const data = d.data();
       return {
         id: d.id,
-        role: data.role || 'user',
+        role: (data.role as 'user' | 'assistant') || 'user',
         content: data.content || '',
         type: data.type || 'text',
         palette: data.palette || undefined,
@@ -134,9 +146,66 @@ export async function getConversationMessages(
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
       };
     });
+
+    return list.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   } catch (err) {
     console.warn('Failed to get conversation messages:', err);
     return [];
+  }
+}
+
+export async function saveAIConversationTurn(
+  uid: string,
+  conversationId: string,
+  userMsg: AIMessage,
+  assistantMsg: AIMessage,
+  conversationTitle?: string
+): Promise<void> {
+  try {
+    const convRef = doc(db, 'users', uid, 'aiConversations', conversationId);
+    const preview = (assistantMsg.content || userMsg.content || '').slice(0, 80);
+    const title = conversationTitle || deriveConversationTitle(userMsg.content, assistantMsg.palette ? 'create_palette' : undefined);
+
+    await setDoc(
+      convRef,
+      {
+        title,
+        updatedAt: serverTimestamp(),
+        lastMessagePreview: preview,
+      },
+      { merge: true }
+    );
+
+    // Save user message
+    const userMsgId = userMsg.id || `msg_u_${Date.now()}`;
+    const userMsgRef = doc(db, 'users', uid, 'aiConversations', conversationId, 'messages', userMsgId);
+    await setDoc(userMsgRef, {
+      role: 'user',
+      content: userMsg.content || '',
+      type: userMsg.type || 'text',
+      createdAt: serverTimestamp(),
+    });
+
+    // Save assistant message
+    const asstMsgId = assistantMsg.id || `msg_a_${Date.now()}`;
+    const asstMsgRef = doc(db, 'users', uid, 'aiConversations', conversationId, 'messages', asstMsgId);
+    const asstData: Record<string, any> = {
+      role: 'assistant',
+      content: assistantMsg.content || '',
+      type: assistantMsg.type || 'text',
+      createdAt: serverTimestamp(),
+    };
+
+    if (assistantMsg.palette) {
+      asstData.palette = JSON.parse(JSON.stringify(assistantMsg.palette));
+    }
+    if (assistantMsg.sources && Array.isArray(assistantMsg.sources)) {
+      asstData.sources = JSON.parse(JSON.stringify(assistantMsg.sources));
+    }
+
+    await setDoc(asstMsgRef, asstData);
+  } catch (err) {
+    console.error('Failed to persist AI conversation turn in Firestore:', err);
   }
 }
 
@@ -148,34 +217,29 @@ export async function saveAIMessage(
 ): Promise<void> {
   try {
     const convRef = doc(db, 'users', uid, 'aiConversations', conversationId);
-    const convSnap = await getDoc(convRef);
-
     const preview = message.content.slice(0, 80);
 
-    if (!convSnap.exists()) {
-      await setDoc(convRef, {
+    await setDoc(
+      convRef,
+      {
         title: conversationTitle || deriveConversationTitle(message.content, message.palette ? 'create_palette' : undefined),
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         lastMessagePreview: preview,
-      });
-    } else {
-      await updateDoc(convRef, {
-        updatedAt: serverTimestamp(),
-        lastMessagePreview: preview,
-      });
-    }
+      },
+      { merge: true }
+    );
 
-    const msgRef = doc(db, 'users', uid, 'aiConversations', conversationId, 'messages', message.id);
+    const msgId = message.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const msgRef = doc(db, 'users', uid, 'aiConversations', conversationId, 'messages', msgId);
     const msgData: Record<string, any> = {
       role: message.role,
-      content: message.content,
+      content: message.content || '',
       type: message.type || 'text',
       createdAt: serverTimestamp(),
     };
 
-    if (message.palette) msgData.palette = message.palette;
-    if (message.sources) msgData.sources = message.sources;
+    if (message.palette) msgData.palette = JSON.parse(JSON.stringify(message.palette));
+    if (message.sources) msgData.sources = JSON.parse(JSON.stringify(message.sources));
 
     await setDoc(msgRef, msgData);
   } catch (err) {

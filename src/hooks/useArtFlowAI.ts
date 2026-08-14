@@ -11,6 +11,7 @@ import {
   sendArtFlowAIMessage,
   listAIConversations,
   getConversationMessages,
+  saveAIConversationTurn,
   saveAIMessage,
   deleteAIConversation,
   deriveConversationTitle,
@@ -123,12 +124,11 @@ export function useArtFlowAI(initialIntent?: string) {
         const assistantMsg = response.message;
         setMessages([...nextMessages, assistantMsg]);
 
-        // Persist messages in background
+        // Persist messages in Firestore and refresh conversation list
         if (user) {
           const title = deriveConversationTitle(clean, intent || (initialIntent as any));
-          saveAIMessage(user.uid, currentConversationId, userMsg, title);
-          saveAIMessage(user.uid, currentConversationId, assistantMsg, title);
-          refreshConversations();
+          await saveAIConversationTurn(user.uid, currentConversationId, userMsg, assistantMsg, title);
+          await refreshConversations();
         }
       } catch (err: any) {
         console.error('AI chat failed:', err);
