@@ -13,6 +13,15 @@ export const dictionaries: Record<SupportedLanguage, TranslationDictionary> = {
 
 export const DEFAULT_LANGUAGE: SupportedLanguage = 'pt-BR';
 
+function humanizeKey(key: string): string {
+  const last = key.split('.').pop() || key;
+  const result = last
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/[_\-]/g, ' ')
+    .trim();
+  return result ? result.charAt(0).toUpperCase() + result.slice(1) : key;
+}
+
 /**
  * Resolves a nested key in dot notation e.g. "home.dailyInspiration"
  */
@@ -35,7 +44,8 @@ export function getTranslation(
         if (fallbackCurrent && typeof fallbackCurrent === 'object' && fk in fallbackCurrent) {
           fallbackCurrent = fallbackCurrent[fk];
         } else {
-          return path;
+          fallbackCurrent = undefined;
+          break;
         }
       }
       current = fallbackCurrent;
@@ -44,7 +54,7 @@ export function getTranslation(
   }
 
   if (typeof current !== 'string') {
-    return path;
+    return humanizeKey(path);
   }
 
   if (!params) {

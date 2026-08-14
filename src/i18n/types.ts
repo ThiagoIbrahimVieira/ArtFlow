@@ -24,6 +24,29 @@ export interface TranslationDictionary {
     category: string;
     all: string;
     optional: string;
+    language: string;
+  };
+  auth: {
+    loginTitle: string;
+    loginSubtitle: string;
+    loginTab: string;
+    signUpTab: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    passwordLabel: string;
+    passwordPlaceholder: string;
+    forgotPassword: string;
+    forgotPasswordPrompt: string;
+    invalidCredentials: string;
+    loginButton: string;
+    dontHaveAccount: string;
+    createAccount: string;
+    signUpTitle: string;
+    signUpSubtitle: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    signUpButton: string;
+    alreadyHaveAccount: string;
   };
   navigation: {
     home: string;
@@ -86,6 +109,13 @@ export interface TranslationDictionary {
       studies: string;
       other: string;
     };
+    status: {
+      idea: string;
+      sketching: string;
+      in_progress: string;
+      review: string;
+      completed: string;
+    };
   };
   references: {
     myReferences: string;
@@ -139,6 +169,9 @@ export interface TranslationDictionary {
     exportPalette: string;
     copyCSS: string;
     cssCopied: string;
+    usageTips: string;
+    copyColors: string;
+    savedInArtFlow: string;
   };
   colorPicker: {
     hue: string;
@@ -200,9 +233,17 @@ export interface TranslationDictionary {
     deleteConversation: string;
     confirmDeleteConversation: string;
     noConversations: string;
+    noConversationsYet: string;
+    deleteConfirm: string;
+    cancel: string;
+    delete: string;
+    today: string;
+    yesterday: string;
+    history: string;
     contextProject: string;
     noContextProject: string;
     sourcesTitle: string;
+    sourcesAndCitations: string;
     paletteGenerated: string;
     savePaletteToLibrary: string;
     paletteSaved: string;

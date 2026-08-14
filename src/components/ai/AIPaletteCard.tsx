@@ -111,22 +111,22 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-2 pt-1 border-t border-[#2D2824]">
+      <div className="flex flex-wrap sm:flex-nowrap gap-2 pt-1 border-t border-[#2D2824]">
         <button
           type="button"
           onClick={handleCopyColors}
           aria-label={t('palettes.copyColors')}
-          className="flex-1 py-2 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E] hover:text-[#FDF8F0] hover:bg-[#272320] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          className="flex-1 min-w-[120px] py-2 px-2.5 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E] hover:text-[#FDF8F0] hover:bg-[#272320] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
           {isCopied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-400">{t('common.done')}</span>
+              <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+              <span className="text-emerald-400 truncate">{t('common.done')}</span>
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5" />
-              <span>{t('palettes.copyColors')}</span>
+              <Copy className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">{t('palettes.copyColors')}</span>
             </>
           )}
         </button>
@@ -135,7 +135,7 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
           type="button"
           onClick={handleSave}
           disabled={isSaved || isSaving}
-          className={`flex-1 py-2 rounded-full text-xs font-sans font-medium flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer ${
+          className={`flex-1 min-w-[120px] py-2 px-2.5 rounded-full text-xs font-sans font-medium flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer ${
             isSaved
               ? 'bg-[#3A332C] text-[#D9B98D] border border-[#52483E] cursor-default'
               : 'bg-[#D9B98D] text-[#191715] hover:bg-[#E8DAC7] active:scale-95'
@@ -143,13 +143,13 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
         >
           {isSaved ? (
             <>
-              <Check className="w-3.5 h-3.5" />
-              <span>✓ {t('palettes.savedInArtFlow')}</span>
+              <Check className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">✓ {t('palettes.savedInArtFlow')}</span>
             </>
           ) : (
             <>
-              <Bookmark className="w-3.5 h-3.5" />
-              <span>{isSaving ? t('common.loading') : t('palettes.savePalette')}</span>
+              <Bookmark className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">{isSaving ? t('common.loading') : t('palettes.savePalette')}</span>
             </>
           )}
         </button>

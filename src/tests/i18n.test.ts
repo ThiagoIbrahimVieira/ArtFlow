@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { ptBR } from '../i18n/pt-BR';
 import { en } from '../i18n/en';
 import { getTranslation } from '../i18n';
@@ -15,6 +17,22 @@ function getAllKeys(obj: Record<string, any>, prefix = ''): string[] {
     }
   }
   return keys;
+}
+
+function findFilesInDir(dir: string, filter: RegExp, fileList: string[] = []): string[] {
+  const files = fs.readdirSync(dir);
+  for (const file of files) {
+    const filePath = path.join(dir, file);
+    const stat = fs.statSync(filePath);
+    if (stat.isDirectory()) {
+      if (file !== 'node_modules' && file !== '.git' && file !== 'dist') {
+        findFilesInDir(filePath, filter, fileList);
+      }
+    } else if (filter.test(file)) {
+      fileList.push(filePath);
+    }
+  }
+  return fileList;
 }
 
 describe('ArtFlow i18n System', () => {
@@ -50,6 +68,75 @@ describe('ArtFlow i18n System', () => {
       expect(ptBR.palettes.colorMuse).toContain('ArtFlow AI');
       expect(en.palettes.colorMuse).toContain('ArtFlow AI');
     });
+
+    it('should correctly translate palettes.copyColors in both languages', () => {
+      expect(getTranslation('pt-BR', 'palettes.copyColors')).toBe('Copiar cores');
+      expect(getTranslation('en', 'palettes.copyColors')).toBe('Copy Colors');
+    });
+
+    it('should correctly translate palettes.savedInArtFlow in both languages', () => {
+      expect(getTranslation('pt-BR', 'palettes.savedInArtFlow')).toBe('Salva no ArtFlow');
+      expect(getTranslation('en', 'palettes.savedInArtFlow')).toBe('Saved in ArtFlow');
+    });
+
+    it('should correctly translate projects.status keys in both languages', () => {
+      expect(getTranslation('pt-BR', 'projects.status.idea')).toBe('Ideia');
+      expect(getTranslation('en', 'projects.status.idea')).toBe('Idea');
+
+      expect(getTranslation('pt-BR', 'projects.status.sketching')).toBe('Rascunho');
+      expect(getTranslation('en', 'projects.status.sketching')).toBe('Sketching');
+
+      expect(getTranslation('pt-BR', 'projects.status.in_progress')).toBe('Em andamento');
+      expect(getTranslation('en', 'projects.status.in_progress')).toBe('In Progress');
+
+      expect(getTranslation('pt-BR', 'projects.status.review')).toBe('Revisão');
+      expect(getTranslation('en', 'projects.status.review')).toBe('Review');
+
+      expect(getTranslation('pt-BR', 'projects.status.completed')).toBe('Concluído');
+      expect(getTranslation('en', 'projects.status.completed')).toBe('Completed');
+    });
+
+    it('should correctly translate AI history and conversation keys', () => {
+      expect(getTranslation('pt-BR', 'ai.conversations')).toBe('Conversas');
+      expect(getTranslation('en', 'ai.conversations')).toBe('Conversations');
+
+      expect(getTranslation('pt-BR', 'ai.newConversation')).toBe('Nova Conversa');
+      expect(getTranslation('en', 'ai.newConversation')).toBe('New Conversation');
+
+      expect(getTranslation('pt-BR', 'ai.today')).toBe('Hoje');
+      expect(getTranslation('en', 'ai.today')).toBe('Today');
+
+      expect(getTranslation('pt-BR', 'ai.yesterday')).toBe('Ontem');
+      expect(getTranslation('en', 'ai.yesterday')).toBe('Yesterday');
+    });
+
+    it('should ensure no static translation key used in the src codebase is missing from pt-BR or en', () => {
+      const srcDir = path.resolve(__dirname, '..');
+      const files = findFilesInDir(srcDir, /\.(tsx|ts)$/);
+      const tRegex = /\bt\(\s*['"]([a-zA-Z0-9_.]+)['"]/g;
+      const missingPt: string[] = [];
+      const missingEn: string[] = [];
+
+      for (const file of files) {
+        const content = fs.readFileSync(file, 'utf-8');
+        let match;
+        while ((match = tRegex.exec(content)) !== null) {
+          const key = match[1];
+          const valPt = getTranslation('pt-BR', key);
+          const valEn = getTranslation('en', key);
+
+          // If getTranslation returned humanizeKey fallback instead of dictionary string
+          const ptHasKey = getAllKeys(ptBR).includes(key);
+          const enHasKey = getAllKeys(en).includes(key);
+
+          if (!ptHasKey) missingPt.push(`${key} (in ${path.basename(file)})`);
+          if (!enHasKey) missingEn.push(`${key} (in ${path.basename(file)})`);
+        }
+      }
+
+      expect(missingPt).toEqual([]);
+      expect(missingEn).toEqual([]);
+    });
   });
 
   describe('Translation Resolution (getTranslation)', () => {
@@ -78,9 +165,9 @@ describe('ArtFlow i18n System', () => {
       expect(getTranslation('es', 'common.save')).toBe('Salvar');
     });
 
-    it('should return the key path if key is not found', () => {
-      expect(getTranslation('pt-BR', 'unknown.nonexistent.key')).toBe('unknown.nonexistent.key');
-      expect(getTranslation('en', 'unknown.nonexistent.key')).toBe('unknown.nonexistent.key');
+    it('should return humanized fallback string instead of technical key when key is unknown', () => {
+      expect(getTranslation('pt-BR', 'unknown.nonexistentKey')).toBe('Nonexistent Key');
+      expect(getTranslation('en', 'unknown.nonexistentKey')).toBe('Nonexistent Key');
     });
   });
 

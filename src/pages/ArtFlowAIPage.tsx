@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Menu, Sparkles } from 'lucide-react';
+import { Sparkles, History } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { AIChat } from '../components/ai/AIChat';
@@ -50,9 +50,10 @@ export const ArtFlowAIPage: React.FC = () => {
             type="button"
             onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
             aria-label={t('ai.conversations')}
+            title={t('ai.conversations')}
             className="p-1.5 rounded-xl bg-[#272320] border border-[#3A332C] text-[#A99D8E] hover:text-[#FDF8F0] md:hidden cursor-pointer"
           >
-            <Menu className="w-4 h-4" />
+            <History className="w-4 h-4 text-[#D9B98D]" />
           </button>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-[#D9B98D]" />
