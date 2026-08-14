@@ -194,6 +194,8 @@ export const en: TranslationDictionary = {
     send: 'Send message',
     thinking: 'ArtFlow AI is crafting your response...',
     searching: 'Searching artistic references and knowledge...',
+    typing: 'ArtFlow AI is typing...',
+    searchingReferences: 'Searching artistic references...',
     newConversation: 'New Conversation',
     deleteConversation: 'Delete Conversation',
     confirmDeleteConversation: 'Do you want to delete this conversation?',

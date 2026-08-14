@@ -194,6 +194,8 @@ export const ptBR: TranslationDictionary = {
     send: 'Enviar mensagem',
     thinking: 'ArtFlow AI está elaborando a resposta...',
     searching: 'Pesquisando informações e referências artísticas...',
+    typing: 'ArtFlow AI está digitando...',
+    searchingReferences: 'Pesquisando referências artísticas...',
     newConversation: 'Nova Conversa',
     deleteConversation: 'Excluir Conversa',
     confirmDeleteConversation: 'Deseja apagar esta conversa?',

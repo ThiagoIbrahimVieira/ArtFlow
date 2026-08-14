@@ -321,21 +321,40 @@ Descrição: ${pData.description || 'Sem descrição'}`;
 
   const systemInstruction = ARTFLOW_SYSTEM_PROMPT + langPrompt + projectContextText;
 
-  // 3. Format contents with history
-  const contents: any[] = [];
-  if (params.history && params.history.length > 0) {
-    for (const h of params.history.slice(-10)) {
-      contents.push({
-        role: h.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: h.content }],
-      });
+  // 3. Format contents with history ensuring strict alternation (user <-> model)
+  const rawItems: Array<{ role: 'user' | 'model'; text: string }> = [];
+  if (params.history && Array.isArray(params.history)) {
+    for (const h of params.history.slice(-12)) {
+      const text = (h.content || '').trim();
+      if (!text) continue;
+      const role = h.role === 'assistant' ? 'model' : 'user';
+      rawItems.push({ role, text });
+    }
+  }
+  rawItems.push({ role: 'user', text: params.message.trim() });
+
+  // Gemini contents must start with a 'user' turn
+  while (rawItems.length > 0 && rawItems[0].role !== 'user') {
+    rawItems.shift();
+  }
+
+  const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+  for (const item of rawItems) {
+    if (contents.length === 0) {
+      contents.push({ role: item.role, parts: [{ text: item.text }] });
+    } else {
+      const prev = contents[contents.length - 1];
+      if (prev.role === item.role) {
+        prev.parts.push({ text: item.text });
+      } else {
+        contents.push({ role: item.role, parts: [{ text: item.text }] });
+      }
     }
   }
 
-  contents.push({
-    role: 'user',
-    parts: [{ text: params.message }],
-  });
+  if (contents.length === 0) {
+    contents.push({ role: 'user', parts: [{ text: params.message.trim() }] });
+  }
 
   // 4. Configure tools
   const tools: any[] = [{ functionDeclarations: [createPaletteDeclaration] }];

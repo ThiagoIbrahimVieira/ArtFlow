@@ -194,6 +194,8 @@ export interface TranslationDictionary {
     send: string;
     thinking: string;
     searching: string;
+    typing: string;
+    searchingReferences: string;
     newConversation: string;
     deleteConversation: string;
     confirmDeleteConversation: string;
