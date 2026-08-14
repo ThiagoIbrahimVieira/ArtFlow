@@ -13,6 +13,7 @@ import {
   getConversationMessages,
   saveAIConversationTurn,
   saveAIMessage,
+  createAIConversation,
   deleteAIConversation,
   deriveConversationTitle,
 } from '../services/artFlowAIService';
@@ -27,6 +28,7 @@ export function useArtFlowAI(initialIntent?: string) {
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUserPrompt, setLastUserPrompt] = useState<{ text: string; intent?: string; projectId?: string } | null>(null);
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
   // Load conversations on mount / user change
   const refreshConversations = useCallback(async () => {
@@ -62,11 +64,35 @@ export function useArtFlowAI(initialIntent?: string) {
 
   // Start fresh conversation
   const startNewConversation = useCallback(() => {
-    const newId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    setCurrentConversationId(newId);
-    setMessages([]);
-    setError(null);
+    setIsNewChatModalOpen(true);
   }, []);
+
+  const createConversationWithTitle = useCallback(async (title: string) => {
+    const finalTitle = title.trim() || 'Chat';
+    if (!user) {
+      const newId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      setCurrentConversationId(newId);
+      setMessages([]);
+      setError(null);
+      setIsNewChatModalOpen(false);
+      return;
+    }
+
+    try {
+      const newConv = await createAIConversation(user.uid, finalTitle);
+      setConversations((prev) => [newConv, ...prev.filter((c) => c.id !== newConv.id)]);
+      setCurrentConversationId(newConv.id);
+      setMessages([]);
+      setError(null);
+      setIsNewChatModalOpen(false);
+    } catch (err) {
+      console.error('Failed to create new conversation:', err);
+      const fallbackId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      setCurrentConversationId(fallbackId);
+      setMessages([]);
+      setIsNewChatModalOpen(false);
+    }
+  }, [user]);
 
   // Remove conversation
   const removeConversation = useCallback(async (convId: string) => {
@@ -126,7 +152,8 @@ export function useArtFlowAI(initialIntent?: string) {
 
         // Persist messages in Firestore and refresh conversation list
         if (user) {
-          const title = deriveConversationTitle(clean, intent || (initialIntent as any));
+          const existingConv = conversations.find((c) => c.id === currentConversationId);
+          const title = existingConv?.title || deriveConversationTitle(clean, intent || (initialIntent as any));
           await saveAIConversationTurn(user.uid, currentConversationId, userMsg, assistantMsg, title);
           await refreshConversations();
         }
@@ -143,7 +170,7 @@ export function useArtFlowAI(initialIntent?: string) {
         setIsSearching(false);
       }
     },
-    [messages, isLoading, currentConversationId, user, initialIntent, language, t, refreshConversations]
+    [messages, isLoading, currentConversationId, conversations, user, initialIntent, language, t, refreshConversations]
   );
 
   const retry = useCallback(() => {
@@ -159,8 +186,11 @@ export function useArtFlowAI(initialIntent?: string) {
     isLoading,
     isSearching,
     error,
+    isNewChatModalOpen,
+    setIsNewChatModalOpen,
     sendMessage,
     startNewConversation,
+    createConversationWithTitle,
     selectConversation,
     removeConversation,
     retry,

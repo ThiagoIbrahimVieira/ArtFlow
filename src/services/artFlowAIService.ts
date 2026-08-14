@@ -91,6 +91,27 @@ export async function sendArtFlowAIMessage(
   };
 }
 
+export async function createAIConversation(uid: string, title?: string): Promise<AIConversation> {
+  const convId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const convRef = doc(db, 'users', uid, 'aiConversations', convId);
+  const finalTitle = title?.trim() || 'Chat';
+
+  await setDoc(convRef, {
+    title: finalTitle,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    lastMessagePreview: '',
+  });
+
+  return {
+    id: convId,
+    title: finalTitle,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    lastMessagePreview: '',
+  };
+}
+
 export async function listAIConversations(uid: string): Promise<AIConversation[]> {
   try {
     const colRef = collection(db, 'users', uid, 'aiConversations');

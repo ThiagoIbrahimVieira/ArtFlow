@@ -5,6 +5,7 @@ import { AppHeader } from '../components/AppHeader';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { AIChat } from '../components/ai/AIChat';
 import { AIConversationList } from '../components/ai/AIConversationList';
+import { NewChatModal } from '../components/ai/NewChatModal';
 import { useArtFlowAI } from '../hooks/useArtFlowAI';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -23,8 +24,11 @@ export const ArtFlowAIPage: React.FC = () => {
     isLoading,
     isSearching,
     error,
+    isNewChatModalOpen,
+    setIsNewChatModalOpen,
     sendMessage,
     startNewConversation,
+    createConversationWithTitle,
     selectConversation,
     removeConversation,
     retry,
@@ -124,6 +128,13 @@ export const ArtFlowAIPage: React.FC = () => {
       <div className="md:hidden">
         <BottomNavigation />
       </div>
+
+      {/* New Chat Name Prompt Modal */}
+      <NewChatModal
+        isOpen={isNewChatModalOpen}
+        onClose={() => setIsNewChatModalOpen(false)}
+        onCreate={createConversationWithTitle}
+      />
     </div>
   );
 };

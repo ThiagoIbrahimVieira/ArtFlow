@@ -222,6 +222,14 @@ export interface TranslationDictionary {
       improveComposition: string;
       colorTheory: string;
     };
+    newChatModal: {
+      title: string;
+      inputLabel: string;
+      inputPlaceholder: string;
+      defaultName: string;
+      createButton: string;
+      cancel: string;
+    };
   };
   artwork: {
     expand: string;

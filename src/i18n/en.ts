@@ -222,6 +222,14 @@ export const en: TranslationDictionary = {
       improveComposition: 'How to improve framing and staging of...',
       colorTheory: 'Explain simultaneous contrast and color temperature',
     },
+    newChatModal: {
+      title: 'New Chat',
+      inputLabel: 'Chat Name',
+      inputPlaceholder: 'Enter chat name...',
+      defaultName: 'Chat',
+      createButton: 'Create Chat',
+      cancel: 'Cancel',
+    },
   },
   artwork: {
     expand: 'Expand',

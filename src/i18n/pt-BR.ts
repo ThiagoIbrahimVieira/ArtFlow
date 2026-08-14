@@ -222,6 +222,14 @@ export const ptBR: TranslationDictionary = {
       improveComposition: 'Como melhorar o enquadramento de...',
       colorTheory: 'Explique contraste simultâneo e temperatura de cores',
     },
+    newChatModal: {
+      title: 'Novo Chat',
+      inputLabel: 'Nome do Chat',
+      inputPlaceholder: 'Digite o nome do chat...',
+      defaultName: 'Chat',
+      createButton: 'Criar Chat',
+      cancel: 'Cancelar',
+    },
   },
   artwork: {
     expand: 'Ampliar',
