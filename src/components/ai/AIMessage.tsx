@@ -3,6 +3,7 @@ import { Sparkles, User } from 'lucide-react';
 import { AIMessage as AIMessageType } from '../../types';
 import { AIPaletteCard } from './AIPaletteCard';
 import { AISourceCard } from './AISourceCard';
+import { FormattedMarkdown } from './FormattedMarkdown';
 
 interface AIMessageProps {
   message: AIMessageType;
@@ -31,10 +32,8 @@ export const AIMessage: React.FC<AIMessageProps> = ({ message }) => {
       </div>
 
       <div className="flex-1 min-w-0 bg-[#272320] border border-[#3A332C] rounded-2xl rounded-tl-sm p-4 text-xs sm:text-sm font-sans text-[#F1E2CB] shadow-md leading-relaxed">
-        {/* Assistant text content */}
-        <div className="whitespace-pre-wrap leading-relaxed space-y-2">
-          {message.content}
-        </div>
+        {/* Assistant formatted markdown content */}
+        <FormattedMarkdown content={message.content} />
 
         {/* Structured Palette Card */}
         {message.palette && <AIPaletteCard palette={message.palette} />}
