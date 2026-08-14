@@ -11,6 +11,7 @@ import { ProjectsPage } from './pages/ProjectsPage';
 import { PalettesPage } from './pages/PalettesPage';
 import { ArtFlowAIPage } from './pages/ArtFlowAIPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { Analytics } from '@vercel/analytics/react';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, authLoading } = useAuth();
@@ -129,6 +130,7 @@ export default function App() {
 
               {/* Global Mobile-first Language Selector Modal */}
               <LanguageSelectorModal />
+              <Analytics />
             </div>
           </div>
         </BrowserRouter>
