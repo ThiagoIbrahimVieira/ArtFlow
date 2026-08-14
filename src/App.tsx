@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { LanguageSelectorModal } from './components/LanguageSelectorModal';
@@ -132,6 +133,7 @@ export default function App() {
             </div>
           </div>
         </BrowserRouter>
+        <SpeedInsights />
       </LanguageProvider>
     </AuthProvider>
   );
