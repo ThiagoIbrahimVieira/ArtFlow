@@ -3,19 +3,32 @@ import { Send, Paperclip } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 
 interface AIComposerProps {
+  value?: string;
+  onChange?: (text: string) => void;
   onSendMessage: (text: string) => void;
   isLoading: boolean;
   placeholder?: string;
 }
 
 export const AIComposer: React.FC<AIComposerProps> = ({
+  value,
+  onChange,
   onSendMessage,
   isLoading,
   placeholder,
 }) => {
   const { t } = useLanguage();
-  const [text, setText] = useState('');
+  const [internalText, setInternalText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const text = value !== undefined ? value : internalText;
+  const updateText = (newVal: string) => {
+    if (onChange) {
+      onChange(newVal);
+    } else {
+      setInternalText(newVal);
+    }
+  };
 
   const effectivePlaceholder = placeholder || t('ai.inputPlaceholder');
 
@@ -30,10 +43,19 @@ export const AIComposer: React.FC<AIComposerProps> = ({
     adjustHeight();
   }, [text]);
 
+  // Focus and place cursor at end when text is populated from a quick action or intent
+  useEffect(() => {
+    if (value && textareaRef.current) {
+      textareaRef.current.focus();
+      const length = value.length;
+      textareaRef.current.setSelectionRange(length, length);
+    }
+  }, [value]);
+
   const handleSend = () => {
     if (!text.trim() || isLoading) return;
     onSendMessage(text.trim());
-    setText('');
+    updateText('');
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }

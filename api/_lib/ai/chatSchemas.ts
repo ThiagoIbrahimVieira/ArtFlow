@@ -18,7 +18,7 @@ export const ArtFlowAIChatRequestSchema = ChatRequestSchema;
 
 export const PaletteToolInputSchema = z.object({
   description: z.string().min(1).max(500),
-  colorCount: z.number().int().min(3).max(8).default(5),
+  colorCount: z.number().int().min(1).max(20).default(5),
   baseColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, { message: 'Invalid hex format' }).optional(),
 });
 
@@ -34,7 +34,7 @@ export const PaletteToolOutputSchema = z.object({
   paletteName: z.string().min(1).max(80),
   description: z.string().min(1).max(300),
   harmony: z.string().min(1).max(60),
-  colors: z.array(PaletteColorSchema).min(3).max(8),
+  colors: z.array(PaletteColorSchema).min(1).max(30),
   usageTips: z.array(z.string()).min(1),
   contrastNotes: z.array(z.string()).optional(),
 });

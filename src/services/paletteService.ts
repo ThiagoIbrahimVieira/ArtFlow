@@ -49,8 +49,8 @@ export function validatePaletteInput(input: Partial<CreatePaletteInput>): { vali
   }
 
   if (input.colors !== undefined) {
-    if (!Array.isArray(input.colors) || input.colors.length < 3 || input.colors.length > 8) {
-      return { valid: false, error: 'Palettes must contain between 3 and 8 colors.' };
+    if (!Array.isArray(input.colors) || input.colors.length < 1 || input.colors.length > 50) {
+      return { valid: false, error: 'Palettes must contain between 1 and 50 colors.' };
     }
 
     for (let i = 0; i < input.colors.length; i++) {

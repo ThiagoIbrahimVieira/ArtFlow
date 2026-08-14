@@ -172,6 +172,8 @@ export const en: TranslationDictionary = {
     usageTips: 'Usage Tips',
     copyColors: 'Copy Colors',
     savedInArtFlow: 'Saved in ArtFlow',
+    showMore: 'Show more',
+    showLess: 'Show less',
   },
   colorPicker: {
     hue: 'Hue',
@@ -256,7 +258,7 @@ export const en: TranslationDictionary = {
       colorTheory: 'Color Theory',
     },
     prompts: {
-      createPalette: 'Create a 5-color palette for...',
+      createPalette: 'Create a color palette for...',
       giveIdea: 'Give concept ideas for...',
       learnTechnique: 'How to do volumetric lighting in...',
       researchArt: 'Research about the art movement...',

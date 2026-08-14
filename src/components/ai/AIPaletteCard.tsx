@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bookmark, Check, Copy, Palette as PaletteIcon } from 'lucide-react';
+import { Bookmark, Check, Copy, Palette as PaletteIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { AIPaletteData } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -15,6 +15,11 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const colorsList = Array.isArray(palette.colors) ? palette.colors : [];
+  const hasMoreColors = colorsList.length > 5;
+  const visibleColors = isExpanded ? colorsList : colorsList.slice(0, 5);
 
   const handleSave = async () => {
     if (!user || isSaved || isSaving) return;
@@ -72,7 +77,7 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
 
       {/* Colors Swatches List */}
       <div className="space-y-1.5">
-        {palette.colors.map((c, i) => (
+        {visibleColors.map((c, i) => (
           <div
             key={i}
             className="flex items-center gap-2.5 bg-[#272320]/80 p-2 rounded-xl border border-[#3A332C]"
@@ -95,6 +100,18 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
           </div>
         ))}
       </div>
+
+      {/* Ver mais / Ver menos button */}
+      {hasMoreColors && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full py-1.5 px-3 rounded-xl bg-[#272320]/80 hover:bg-[#272320] border border-[#3A332C] text-[#D9B98D] hover:text-[#E8DAC7] text-[11px] font-sans font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <span>{isExpanded ? t('palettes.showLess') : `${t('palettes.showMore')} (+${colorsList.length - 5})`}</span>
+          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
+      )}
 
       {/* Usage Tips */}
       {palette.usageTips && palette.usageTips.length > 0 && (

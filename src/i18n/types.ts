@@ -172,6 +172,8 @@ export interface TranslationDictionary {
     usageTips: string;
     copyColors: string;
     savedInArtFlow: string;
+    showMore: string;
+    showLess: string;
   };
   colorPicker: {
     hue: string;

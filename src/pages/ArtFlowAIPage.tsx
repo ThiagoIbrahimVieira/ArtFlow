@@ -118,6 +118,7 @@ export const ArtFlowAIPage: React.FC = () => {
             isLoading={isLoading}
             isSearching={isSearching}
             error={error}
+            initialComposerText={normalizedIntent === 'create_palette' && messages.length === 0 ? t('ai.prompts.createPalette') : undefined}
             onSendMessage={sendMessage}
             onRetry={retry}
             onNewConversation={startNewConversation}

@@ -20,7 +20,7 @@ export const createPaletteDeclaration = {
       },
       colors: {
         type: Type.ARRAY,
-        description: 'Lista de cores exata solicitada (entre 3 e 8 cores).',
+        description: 'Lista de cores da paleta solicitada (até 20 cores por lote).',
         items: {
           type: Type.OBJECT,
           properties: {

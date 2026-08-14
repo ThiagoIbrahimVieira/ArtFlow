@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bookmark, Sun, Check } from 'lucide-react';
+import { Bookmark, Sun, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { Palette, PaletteColor } from '../types';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -19,6 +19,7 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
   const { t } = useLanguage();
   const [isSaved, setIsSaved] = useState(palette.isSaved);
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -47,6 +48,8 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
   };
 
   const colorList = Array.isArray(palette.colors) ? palette.colors : [];
+  const hasMoreColors = colorList.length > 5;
+  const visibleColors = isExpanded ? colorList : colorList.slice(0, 5);
 
   if (isFeatured) {
     return (
@@ -73,9 +76,9 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
           </button>
         </div>
 
-        {/* 5 Color Swatches */}
+        {/* Swatches Grid */}
         <div className="grid grid-cols-5 gap-2 my-2.5">
-          {colorList.map((c, index) => {
+          {visibleColors.map((c, index) => {
             const hex = getColorHex(c);
             return (
               <button
@@ -95,6 +98,20 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
             );
           })}
         </div>
+
+        {/* Ver mais / Ver menos button */}
+        {hasMoreColors && (
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="inline-flex items-center gap-1 text-[11px] font-sans font-medium text-[#D9B98D] hover:text-[#E8DAC7] transition-colors cursor-pointer"
+            >
+              <span>{isExpanded ? t('palettes.showLess') : `${t('palettes.showMore')} (+${colorList.length - 5})`}</span>
+              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        )}
 
         {palette.description && (
           <p className="text-[12px] font-sans text-[#A99D8E] mt-2 italic">
@@ -130,9 +147,9 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
         </div>
       </div>
 
-      {/* 5 Color Swatches */}
+      {/* Swatches Grid */}
       <div className="grid grid-cols-5 gap-2">
-        {colorList.map((c, index) => {
+        {visibleColors.map((c, index) => {
           const hex = getColorHex(c);
           return (
             <button
@@ -152,6 +169,20 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
           );
         })}
       </div>
+
+      {/* Ver mais / Ver menos button */}
+      {hasMoreColors && (
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="inline-flex items-center gap-1 text-[11px] font-sans font-medium text-[#D9B98D] hover:text-[#E8DAC7] transition-colors cursor-pointer"
+          >
+            <span>{isExpanded ? t('palettes.showLess') : `${t('palettes.showMore')} (+${colorList.length - 5})`}</span>
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

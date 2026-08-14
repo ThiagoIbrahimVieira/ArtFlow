@@ -172,6 +172,8 @@ export const ptBR: TranslationDictionary = {
     usageTips: 'Dicas de Aplicação',
     copyColors: 'Copiar cores',
     savedInArtFlow: 'Salva no ArtFlow',
+    showMore: 'Ver mais',
+    showLess: 'Ver menos',
   },
   colorPicker: {
     hue: 'Matiz',
@@ -256,7 +258,7 @@ export const ptBR: TranslationDictionary = {
       colorTheory: 'Teoria das Cores',
     },
     prompts: {
-      createPalette: 'Crie uma paleta de 5 cores para...',
+      createPalette: 'Crie uma paleta de cores para...',
       giveIdea: 'Dê ideias de conceito para...',
       learnTechnique: 'Como fazer iluminação volumétrica em...',
       researchArt: 'Pesquise sobre o movimento...',

@@ -14,6 +14,7 @@ interface AIChatProps {
   isLoading: boolean;
   isSearching: boolean;
   error: string | null;
+  initialComposerText?: string;
   onSendMessage: (text: string, intent?: 'chat' | 'create_palette' | 'research' | 'art_feedback', projectId?: string) => void;
   onRetry: () => void;
   onNewConversation: () => void;
@@ -24,6 +25,7 @@ export const AIChat: React.FC<AIChatProps> = ({
   isLoading,
   isSearching,
   error,
+  initialComposerText,
   onSendMessage,
   onRetry,
   onNewConversation,
@@ -33,6 +35,13 @@ export const AIChat: React.FC<AIChatProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [userProjects, setUserProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [composerText, setComposerText] = useState<string>(initialComposerText || '');
+
+  useEffect(() => {
+    if (initialComposerText) {
+      setComposerText(initialComposerText);
+    }
+  }, [initialComposerText]);
 
   useEffect(() => {
     if (!user) return;
@@ -51,13 +60,14 @@ export const AIChat: React.FC<AIChatProps> = ({
 
   const handleSend = (text: string) => {
     onSendMessage(text, undefined, selectedProjectId || undefined);
+    setComposerText('');
   };
 
   const handleQuickAction = (
     prompt: string,
-    intent?: 'chat' | 'create_palette' | 'research' | 'art_feedback'
+    _intent?: 'chat' | 'create_palette' | 'research' | 'art_feedback'
   ) => {
-    onSendMessage(prompt, intent, selectedProjectId || undefined);
+    setComposerText(prompt);
   };
 
   return (
@@ -122,7 +132,12 @@ export const AIChat: React.FC<AIChatProps> = ({
       </div>
 
       {/* Bottom Composer */}
-      <AIComposer onSendMessage={handleSend} isLoading={isLoading} />
+      <AIComposer
+        value={composerText}
+        onChange={setComposerText}
+        onSendMessage={handleSend}
+        isLoading={isLoading}
+      />
     </div>
   );
 };

@@ -42,7 +42,7 @@ describe('Palette & Color Validation', () => {
     expect(normalizeHexColor('d9b98d')).toBe('#D9B98D');
   });
 
-  it('validates color count boundaries (3 to 8 colors)', () => {
+  it('validates color count boundaries (1 to 50 colors, supporting 20+)', () => {
     expect(
       validatePaletteInput({
         name: 'Sunset Glow',
@@ -52,18 +52,22 @@ describe('Palette & Color Validation', () => {
 
     expect(
       validatePaletteInput({
+        name: 'Twenty Colors Palette',
+        colors: Array.from({ length: 20 }, (_, i) => `#${(i * 10).toString(16).padStart(6, '0')}`),
+      }).valid
+    ).toBe(true);
+
+    expect(
+      validatePaletteInput({
         name: 'Too Few',
-        colors: ['#191715', '#3D2918'],
+        colors: [],
       }).valid
     ).toBe(false);
 
     expect(
       validatePaletteInput({
         name: 'Too Many',
-        colors: [
-          '#111111', '#222222', '#333333', '#444444',
-          '#555555', '#666666', '#777777', '#888888', '#999999'
-        ],
+        colors: Array.from({ length: 51 }, () => '#111111'),
       }).valid
     ).toBe(false);
   });

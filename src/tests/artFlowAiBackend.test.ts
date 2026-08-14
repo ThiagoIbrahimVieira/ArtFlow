@@ -72,6 +72,25 @@ describe('ArtFlow AI Palette Tool Normalization', () => {
     const result = CreatePaletteToolSchema.safeParse(validToolCall);
     expect(result.success).toBe(true);
   });
+
+  it('normalizes up to 20 colors without clamping to 8', () => {
+    const twentyColors = Array.from({ length: 20 }, (_, i) => ({
+      hex: `#${(i * 12).toString(16).padStart(6, '0')}`,
+      name: `Color ${i + 1}`,
+      role: `Role ${i + 1}`,
+    }));
+    const rawArgs = {
+      paletteName: 'Mega 20 Palette',
+      description: 'Palette with 20 distinct hues',
+      harmony: 'Complex Multichrome',
+      colors: twentyColors,
+      usageTips: ['Distribute evenly'],
+    };
+
+    const normalized = normalizeGeneratedPalette(rawArgs);
+    expect(normalized.colors).toHaveLength(20);
+    expect(CreatePaletteToolSchema.safeParse(rawArgs).success).toBe(true);
+  });
 });
 
 describe('ArtFlow AI Rate Limiter Logic', () => {

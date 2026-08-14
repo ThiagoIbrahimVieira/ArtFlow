@@ -59,7 +59,7 @@ export const PalettesPage: React.FC = () => {
     e.preventDefault();
     if (!user || !manualName.trim()) return;
 
-    if (manualColors.length < 2 || manualColors.length > 10) {
+    if (manualColors.length < 1 || manualColors.length > 20) {
       setModalError(t('errors.generic'));
       return;
     }

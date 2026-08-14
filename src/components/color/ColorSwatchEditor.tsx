@@ -24,7 +24,7 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
   };
 
   const handleAddColor = () => {
-    if (colors.length >= 10) return;
+    if (colors.length >= 20) return;
     const defaultNewHex = colors.length % 2 === 0 ? '#E5A855' : '#82A89C';
     const updated = [...colors, defaultNewHex];
     onChange(updated);
@@ -32,7 +32,7 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
   };
 
   const handleRemoveColor = (indexToRemove: number) => {
-    if (colors.length <= 2) return;
+    if (colors.length <= 1) return;
     const updated = colors.filter((_, idx) => idx !== indexToRemove);
     onChange(updated);
     if (selectedIndex >= updated.length) {
@@ -44,7 +44,7 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
     <div className="space-y-3.5 text-left">
       <div className="flex items-center justify-between">
         <label className="text-xs font-sans text-[#A99D8E] font-medium">
-          {t('palettes.colorsCount')} ({colors.length}/10)
+          {t('palettes.colorsCount')} ({colors.length}/20)
         </label>
         <span className="text-[10px] font-sans text-[#7A7165]">
           HEX / HSB
@@ -73,7 +73,7 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
                 )}
               </button>
 
-              {colors.length > 2 && (
+              {colors.length > 1 && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -90,7 +90,7 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
           );
         })}
 
-        {colors.length < 10 && (
+        {colors.length < 20 && (
           <button
             type="button"
             onClick={handleAddColor}

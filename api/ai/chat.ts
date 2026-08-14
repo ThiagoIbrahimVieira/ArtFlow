@@ -31,7 +31,7 @@ export const PaletteToolOutputSchema = z.object({
   paletteName: z.string().min(1).max(80),
   description: z.string().min(1).max(300),
   harmony: z.string().min(1).max(60),
-  colors: z.array(PaletteColorSchema).min(3).max(8),
+  colors: z.array(PaletteColorSchema).min(1).max(30),
   usageTips: z.array(z.string()).min(1),
   contrastNotes: z.array(z.string()).optional(),
 });
@@ -54,7 +54,15 @@ DIRETRIZES DE RESPOSTA:
 3. Formate suas respostas usando Markdown elegante com títulos, tópicos e ênfases quando apropriado.
 4. Quando o usuário pedir ideias ou conceitos, ofereça direções criativas envolventes com dicas de iluminação, paleta e enquadramento.
 5. Quando o usuário pedir paletas de cores ou harmonias (ou o intent for 'create_palette'), utilize a ferramenta 'create_palette' para gerar dados estruturados com nomes poéticos/técnicos para as cores e códigos HEX precisos.
-6. Nunca invente fatos históricos ou termos irreais; use grounding para pesquisar referências contemporâneas ou factuais quando necessário.`;
+6. Regras para Paletas de Cores (Capacidade e Paginação):
+   - Quantidade padrão e até 20 cores: Gere a paleta diretamente com as cores solicitadas (máximo de 20 cores por lote na ferramenta 'create_palette').
+   - Solicitações com mais de 20 cores (ex: 30, 40, 50 cores):
+     * Cada chamada da ferramenta 'create_palette' comporta no máximo 20 cores por lote.
+     * Gere o primeiro lote com as primeiras 20 cores (ex: "Parte 1 - Primeiras 20 cores").
+     * Na sua mensagem de texto, pergunte explicitamente se o usuário deseja gerar o próximo lote restante de cores.
+     * Quando o usuário responder confirmando ("sim", "quero o resto", "pode mandar"), gere o próximo lote de até 20 cores via 'create_palette'.
+     * Não há limite máximo global artificial; continue gerando lotes de 20 conforme solicitado.
+7. Nunca invente fatos históricos ou termos irreais; use grounding para pesquisar referências contemporâneas ou factuais quando necessário.`;
 
 // ==========================================
 // 3. FIREBASE ADMIN & AUTH
@@ -209,7 +217,7 @@ function validateAndFormatPalette(raw: any, expectedCount?: number) {
   }
 
   const palette = parsed.data;
-  const targetCount = Math.max(3, Math.min(8, expectedCount || palette.colors.length || 5));
+  const targetCount = Math.max(1, expectedCount || palette.colors.length || 5);
   const normalizedColors = palette.colors.slice(0, targetCount).map((c) => ({
     hex: normalizeHexColor(c.hex),
     name: c.name.trim(),
@@ -249,7 +257,7 @@ const createPaletteDeclaration = {
       harmony: { type: 'STRING', description: 'Tipo de harmonia (análoga, complementar, triádica, etc.)' },
       colors: {
         type: 'ARRAY',
-        description: 'Lista de 3 a 8 cores da paleta',
+        description: 'Lista de cores da paleta (até 20 cores por lote)',
         items: {
           type: 'OBJECT',
           properties: {

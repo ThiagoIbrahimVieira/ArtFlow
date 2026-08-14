@@ -24,7 +24,7 @@ export function validateAndFormatPalette(raw: any, expectedCount?: number): Pale
   }));
 
   // Enforce required color count
-  const targetCount = Math.max(3, Math.min(8, expectedCount || normalizedColors.length || 5));
+  const targetCount = Math.max(1, expectedCount || normalizedColors.length || 5);
   const finalColors = normalizedColors.slice(0, targetCount);
 
   // If received fewer colors than requested, add balanced complementaries/tones
