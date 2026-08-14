@@ -55,24 +55,30 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
 
   return (
     <div className="mt-3 w-full bg-[#191715] border border-[#3A332C] rounded-2xl p-3.5 sm:p-4 text-[#F1E2CB] shadow-lg space-y-3 text-left">
-      {/* Title & Harmony Badge */}
-      <div className="flex items-start justify-between gap-2 border-b border-[#2D2824] pb-2.5">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs text-[#D9B98D] font-medium font-sans mb-0.5">
-            <PaletteIcon className="w-3.5 h-3.5" />
+      {/* Title & Harmony Badge Header */}
+      <div className="border-b border-[#2D2824] pb-2.5 space-y-1.5">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-[#D9B98D] font-medium font-sans">
+            <PaletteIcon className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{t('palettes.generateWithAI')}</span>
           </div>
-          <h4 className="font-display text-[17px] font-semibold text-[#FDF8F0] leading-tight">
-            {palette.paletteName}
-          </h4>
-          <p className="text-[11px] font-sans text-[#A99D8E] mt-0.5">
-            {palette.description}
-          </p>
+
+          {palette.harmony && (
+            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-sans font-medium bg-[#3D2918] text-[#D9B98D] border border-[#513E2C] max-w-full truncate">
+              {palette.harmony}
+            </span>
+          )}
         </div>
 
-        <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-sans font-medium bg-[#3D2918] text-[#D9B98D] border border-[#513E2C] flex-shrink-0">
-          {palette.harmony}
-        </span>
+        <h4 className="font-display text-[17px] font-semibold text-[#FDF8F0] leading-snug break-words">
+          {palette.paletteName}
+        </h4>
+
+        {palette.description && (
+          <p className="text-[11px] font-sans text-[#A99D8E] leading-relaxed break-words">
+            {palette.description}
+          </p>
+        )}
       </div>
 
       {/* Colors Swatches List */}
