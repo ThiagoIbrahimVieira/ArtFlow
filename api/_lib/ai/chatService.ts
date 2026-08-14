@@ -27,7 +27,7 @@ export async function processArtFlowAIChat(input: ChatServiceInput): Promise<Cha
   }
 
   const rawModel = process.env.GEMINI_MODEL?.replace(/^["']|["']$/g, '').trim();
-  const modelName = rawModel || 'gemini-2.5-flash';
+  const modelName = rawModel && !['gemini-2.5-flash', 'gemini-3.6-flash', 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'].includes(rawModel) ? rawModel : 'gemini-3.5-flash-lite';
 
   const ai = new GoogleGenAI({ apiKey });
 
