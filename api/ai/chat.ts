@@ -291,7 +291,7 @@ async function processArtFlowAIChat(params: {
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const modelName = process.env.GEMINI_MODEL?.replace(/^["']|["']$/g, '').trim() || 'gemini-2.5-flash';
+  const modelName = process.env.GEMINI_MODEL?.replace(/^["']|["']$/g, '').trim() || 'gemini-flash-latest';
 
   // 1. Fetch project context if requested
   let projectContextText = '';
