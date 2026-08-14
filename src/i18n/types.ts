@@ -180,6 +180,11 @@ export interface TranslationDictionary {
   ai: {
     title: string;
     subtitle: string;
+    newChat: string;
+    conversations: string;
+    contextLabel: string;
+    noProjectContext: string;
+    emptyDescription: string;
     welcomeMessage: string;
     suggestion1: string;
     suggestion2: string;
@@ -199,6 +204,22 @@ export interface TranslationDictionary {
     paletteGenerated: string;
     savePaletteToLibrary: string;
     paletteSaved: string;
+    quickActions: {
+      createPalette: string;
+      giveIdea: string;
+      learnTechnique: string;
+      researchArt: string;
+      improveComposition: string;
+      colorTheory: string;
+    };
+    prompts: {
+      createPalette: string;
+      giveIdea: string;
+      learnTechnique: string;
+      researchArt: string;
+      improveComposition: string;
+      colorTheory: string;
+    };
   };
   artwork: {
     expand: string;
