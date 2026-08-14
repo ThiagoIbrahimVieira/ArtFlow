@@ -333,9 +333,7 @@ Descrição: ${pData.description || 'Sem descrição'}`;
 
   // 4. Configure tools
   const tools: any[] = [{ functionDeclarations: [createPaletteDeclaration] }];
-
-  // Add Google Search grounding for research or general inquiries
-  if (params.intent === 'research' || !params.intent || params.intent === 'chat') {
+  if (params.intent === 'research') {
     tools.push({ googleSearch: {} });
   }
 
@@ -351,12 +349,29 @@ Descrição: ${pData.description || 'Sem descrição'}`;
       },
     });
   } catch (err: any) {
-    console.error('Gemini call error:', err);
-    const msg = err?.message || '';
-    if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) throw new Error('GEMINI_RATE_LIMIT_EXCEEDED');
-    if (msg.includes('401') || msg.includes('403') || msg.includes('API key')) throw new Error('GEMINI_AUTH_ERROR');
-    if (msg.includes('404')) throw new Error('GEMINI_MODEL_NOT_FOUND');
-    throw new Error('GEMINI_UPSTREAM_ERROR');
+    // If search grounding fails with quota error, gracefully retry without search
+    if (params.intent === 'research' && (err?.message?.includes('429') || err?.message?.includes('RESOURCE_EXHAUSTED'))) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents,
+          config: {
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            tools: [{ functionDeclarations: [createPaletteDeclaration as any] }],
+          },
+        });
+      } catch (retryErr: any) {
+        console.error('Gemini retry error:', retryErr);
+        throw retryErr;
+      }
+    } else {
+      console.error('Gemini call error:', err);
+      const msg = err?.message || '';
+      if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) throw new Error('GEMINI_RATE_LIMIT_EXCEEDED');
+      if (msg.includes('401') || msg.includes('403') || msg.includes('API key')) throw new Error('GEMINI_AUTH_ERROR');
+      if (msg.includes('404')) throw new Error('GEMINI_MODEL_NOT_FOUND');
+      throw new Error('GEMINI_UPSTREAM_ERROR');
+    }
   }
 
   // 6. Process response parts
