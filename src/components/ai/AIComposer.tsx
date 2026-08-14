@@ -20,9 +20,11 @@ export const AIComposer: React.FC<AIComposerProps> = ({
   const { t } = useLanguage();
   const [internalText, setInternalText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prevValueRef = useRef(value);
 
   const text = value !== undefined ? value : internalText;
-  const updateText = (newVal: string) => {
+
+  const handleTextChange = (newVal: string) => {
     if (onChange) {
       onChange(newVal);
     } else {
@@ -43,19 +45,20 @@ export const AIComposer: React.FC<AIComposerProps> = ({
     adjustHeight();
   }, [text]);
 
-  // Focus and place cursor at end when text is populated from a quick action or intent
+  // Focus and place cursor at end ONLY when external value changes while not already focused
   useEffect(() => {
-    if (value && textareaRef.current) {
-      textareaRef.current.focus();
+    if (value && value !== prevValueRef.current && document.activeElement !== textareaRef.current) {
+      textareaRef.current?.focus();
       const length = value.length;
-      textareaRef.current.setSelectionRange(length, length);
+      textareaRef.current?.setSelectionRange(length, length);
     }
+    prevValueRef.current = value;
   }, [value]);
 
   const handleSend = () => {
     if (!text.trim() || isLoading) return;
     onSendMessage(text.trim());
-    updateText('');
+    handleTextChange('');
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -87,7 +90,7 @@ export const AIComposer: React.FC<AIComposerProps> = ({
           ref={textareaRef}
           rows={1}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => handleTextChange(e.target.value)}
           onKeyDown={handleKeyDown}
           maxLength={4000}
           placeholder={effectivePlaceholder}

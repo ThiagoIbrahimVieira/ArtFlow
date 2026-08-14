@@ -36,10 +36,12 @@ export const AIChat: React.FC<AIChatProps> = ({
   const [userProjects, setUserProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [composerText, setComposerText] = useState<string>(initialComposerText || '');
+  const prevInitialTextRef = useRef(initialComposerText);
 
   useEffect(() => {
-    if (initialComposerText) {
+    if (initialComposerText && initialComposerText !== prevInitialTextRef.current) {
       setComposerText(initialComposerText);
+      prevInitialTextRef.current = initialComposerText;
     }
   }, [initialComposerText]);
 
