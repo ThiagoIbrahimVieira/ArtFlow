@@ -10,6 +10,7 @@ import { PaletteCard } from '../components/PaletteCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { ArtworkViewer, ArtworkViewerData } from '../components/artwork/ArtworkViewer';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import { listProjects } from '../services/projectService';
 import { listReferences } from '../services/referenceService';
 import { listPalettes } from '../services/paletteService';
@@ -18,6 +19,7 @@ import { Project, Reference, Palette, DeviantArtArtwork } from '../types';
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [references, setReferences] = useState<Reference[]>([]);
@@ -92,10 +94,10 @@ export const HomePage: React.FC = () => {
   const paletteOfDay = palettes[0] || null;
 
   return (
-    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-24 text-left">
+    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-28 text-left">
       <AppHeader />
 
-      <main className="px-4 sm:px-5 space-y-6 pt-1">
+      <main className="px-4 sm:px-5 space-y-7 sm:space-y-8 pt-1">
         {/* Real Daily Deviations Inspiration Carousel */}
         <section>
           <DailyInspirationCard onSelectArtwork={handleSelectDailyArtwork} />
@@ -104,11 +106,11 @@ export const HomePage: React.FC = () => {
         {/* Active Projects (User-only, no mocks) */}
         <section>
           <SectionHeader
-            title="Projetos Ativos"
+            title={t('home.activeProjects')}
             onActionClick={() => navigate('/projects')}
           />
           {loading ? (
-            <div className="py-6 text-center text-xs text-[#A99D8E]">Carregando projetos...</div>
+            <div className="py-6 text-center text-xs text-[#A99D8E]">{t('common.loading')}</div>
           ) : projects.length > 0 ? (
             <div className="flex gap-3.5 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:-mx-5 sm:px-5">
               {projects.slice(0, 4).map((proj) => (
@@ -124,14 +126,15 @@ export const HomePage: React.FC = () => {
             <div className="p-5 rounded-2xl bg-[#272320]/60 border border-[#3A332C] text-center space-y-2.5">
               <Folder className="w-6 h-6 text-[#A99D8E] mx-auto opacity-60" />
               <p className="text-xs font-sans text-[#A99D8E]">
-                Você ainda não criou nenhum projeto.
+                {t('home.noActiveProjects')}
               </p>
               <button
+                type="button"
                 onClick={() => navigate('/projects')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#272320] border border-[#433D37] rounded-full text-xs font-sans font-medium text-[#D9B98D] hover:bg-[#332E2A] transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#272320] border border-[#433D37] rounded-full text-xs font-sans font-medium text-[#D9B98D] hover:bg-[#332E2A] transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Novo Projeto</span>
+                <span>{t('projects.newProject')}</span>
               </button>
             </div>
           )}
@@ -140,11 +143,11 @@ export const HomePage: React.FC = () => {
         {/* Recent References (User-only, no mocks) */}
         <section>
           <SectionHeader
-            title="Referências Recentes"
+            title={t('home.recentReferences')}
             onActionClick={() => navigate('/references')}
           />
           {loading ? (
-            <div className="py-6 text-center text-xs text-[#A99D8E]">Carregando referências...</div>
+            <div className="py-6 text-center text-xs text-[#A99D8E]">{t('common.loading')}</div>
           ) : references.length > 0 ? (
             <div className="grid grid-cols-2 gap-3.5">
               {references.slice(0, 4).map((ref) => (
@@ -157,14 +160,15 @@ export const HomePage: React.FC = () => {
             <div className="p-5 rounded-2xl bg-[#272320]/60 border border-[#3A332C] text-center space-y-2.5">
               <Bookmark className="w-6 h-6 text-[#A99D8E] mx-auto opacity-60" />
               <p className="text-xs font-sans text-[#A99D8E]">
-                Nenhuma referência salva ainda.
+                {t('home.noReferences')}
               </p>
               <button
+                type="button"
                 onClick={() => navigate('/references')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#272320] border border-[#433D37] rounded-full text-xs font-sans font-medium text-[#D9B98D] hover:bg-[#332E2A] transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#272320] border border-[#433D37] rounded-full text-xs font-sans font-medium text-[#D9B98D] hover:bg-[#332E2A] transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Explorar Referências</span>
+                <span>{t('references.addReference')}</span>
               </button>
             </div>
           )}
@@ -173,7 +177,7 @@ export const HomePage: React.FC = () => {
         {/* Palettes Section */}
         <section>
           <SectionHeader
-            title="Paletas de Cores"
+            title={t('palettes.myPalettes')}
             onActionClick={() => navigate('/palettes')}
           />
           {paletteOfDay ? (
@@ -182,14 +186,15 @@ export const HomePage: React.FC = () => {
             <div className="p-5 rounded-2xl bg-[#272320]/60 border border-[#3A332C] text-center space-y-2.5">
               <PaletteIcon className="w-6 h-6 text-[#A99D8E] mx-auto opacity-60" />
               <p className="text-xs font-sans text-[#A99D8E]">
-                Crie ou gere sua primeira paleta com ArtFlow AI.
+                {t('palettes.noPalettesDesc')}
               </p>
               <button
+                type="button"
                 onClick={() => navigate('/ai?intent=create_palette')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#D9B98D] text-[#191715] rounded-full text-xs font-sans font-medium hover:bg-[#E8DAC7] transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#D9B98D] text-[#191715] rounded-full text-xs font-sans font-medium hover:bg-[#E8DAC7] transition-colors shadow-sm cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Criar com ArtFlow AI</span>
+                <span>{t('palettes.generateWithAI')}</span>
               </button>
             </div>
           )}

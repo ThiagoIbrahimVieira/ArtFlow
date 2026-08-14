@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
+import { useLanguage } from './useLanguage';
 import {
   AIConversation,
   AIMessage,
@@ -17,6 +18,7 @@ import {
 
 export function useArtFlowAI(initialIntent?: string) {
   const { user } = useAuth();
+  const { language, t } = useLanguage();
   const [conversations, setConversations] = useState<AIConversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string>(() => `conv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
   const [messages, setMessages] = useState<AIMessage[]>([]);
@@ -51,11 +53,11 @@ export function useArtFlowAI(initialIntent?: string) {
       setMessages(msgs);
     } catch (err) {
       console.error('Failed to load conversation:', err);
-      setError('Não foi possível carregar o histórico desta conversa.');
+      setError(t('errors.firestoreError'));
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   // Start fresh conversation
   const startNewConversation = useCallback(() => {
@@ -99,7 +101,7 @@ export function useArtFlowAI(initialIntent?: string) {
       setMessages(nextMessages);
       setIsLoading(true);
 
-      const isResearch = intent === 'research' || clean.toLowerCase().includes('pesquis') || clean.toLowerCase().includes('exposiç');
+      const isResearch = intent === 'research' || clean.toLowerCase().includes('pesquis') || clean.toLowerCase().includes('research') || clean.toLowerCase().includes('exposiç');
       if (isResearch) setIsSearching(true);
 
       try {
@@ -113,6 +115,7 @@ export function useArtFlowAI(initialIntent?: string) {
           conversationId: currentConversationId,
           message: clean,
           intent: intent || (initialIntent as any),
+          preferredLanguage: language,
           projectId,
           history,
         });
@@ -131,16 +134,16 @@ export function useArtFlowAI(initialIntent?: string) {
         console.error('AI chat failed:', err);
         const code = err?.code || '';
         if (code === 'AI_RATE_LIMIT_EXCEEDED') {
-          setError('Limite de mensagens atingido (30/hora). Aguarde alguns instantes.');
+          setError(t('errors.aiRateLimit'));
         } else {
-          setError(err?.message || 'Não consegui responder agora.');
+          setError(err?.message || t('errors.aiUnavailable'));
         }
       } finally {
         setIsLoading(false);
         setIsSearching(false);
       }
     },
-    [messages, isLoading, currentConversationId, user, initialIntent, refreshConversations]
+    [messages, isLoading, currentConversationId, user, initialIntent, language, t, refreshConversations]
   );
 
   const retry = useCallback(() => {

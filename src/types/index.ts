@@ -85,6 +85,7 @@ export interface UserProfile {
   username: string;
   avatarUrl: string | null;
   bio: string;
+  language?: 'pt-BR' | 'en';
   projectsCount?: number;
   referencesCount?: number;
   palettesCount?: number;
@@ -180,6 +181,7 @@ export interface ArtFlowAIChatRequest {
   conversationId?: string;
   message: string;
   intent?: 'chat' | 'create_palette' | 'research' | 'art_feedback';
+  preferredLanguage?: 'pt-BR' | 'en';
   projectId?: string;
   history?: Array<{
     role: 'user' | 'assistant';

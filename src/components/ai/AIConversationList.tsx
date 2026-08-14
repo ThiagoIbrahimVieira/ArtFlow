@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, MessageSquare, Trash2, X } from 'lucide-react';
 import { AIConversation } from '../../types';
+import { useLanguage } from '../../hooks/useLanguage';
 
 interface AIConversationListProps {
   conversations: AIConversation[];
@@ -19,6 +20,7 @@ export const AIConversationList: React.FC<AIConversationListProps> = ({
   onDeleteConversation,
   onCloseMobileDrawer,
 }) => {
+  const { t } = useLanguage();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
@@ -38,13 +40,13 @@ export const AIConversationList: React.FC<AIConversationListProps> = ({
       <div className="p-3.5 border-b border-[#332E2A] space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-sans font-medium text-[#A99D8E] uppercase tracking-wider">
-            Conversas
+            {t('ai.conversations')}
           </span>
           {onCloseMobileDrawer && (
             <button
               onClick={onCloseMobileDrawer}
-              aria-label="Close drawer"
-              className="p-1 text-[#A99D8E] hover:text-[#F1E2CB] md:hidden"
+              aria-label={t('common.close')}
+              className="p-1 text-[#A99D8E] hover:text-[#FDF8F0] md:hidden cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -57,10 +59,10 @@ export const AIConversationList: React.FC<AIConversationListProps> = ({
             onNewConversation();
             if (onCloseMobileDrawer) onCloseMobileDrawer();
           }}
-          className="w-full py-2.5 px-3.5 rounded-xl bg-[#272320] hover:bg-[#332E2A] border border-[#3A332C] text-xs font-sans font-medium text-[#F1E2CB] flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
+          className="w-full py-2.5 px-3.5 rounded-xl bg-[#272320] hover:bg-[#332E2A] border border-[#3A332C] text-xs font-sans font-medium text-[#FDF8F0] flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer"
         >
           <Plus className="w-4 h-4 text-[#D9B98D]" />
-          <span>+ Nova conversa</span>
+          <span>{t('ai.newChat')}</span>
         </button>
       </div>
 
@@ -68,7 +70,7 @@ export const AIConversationList: React.FC<AIConversationListProps> = ({
       <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
         {conversations.length === 0 ? (
           <div className="py-8 text-center text-xs font-sans text-[#7A7165] px-3">
-            Nenhuma conversa anterior. Inicie uma nova acima!
+            {t('ai.noConversations')}
           </div>
         ) : (
           conversations.map((conv) => {
@@ -84,8 +86,8 @@ export const AIConversationList: React.FC<AIConversationListProps> = ({
                 }}
                 className={`w-full p-2.5 rounded-xl flex items-center justify-between cursor-pointer transition-all group ${
                   isActive
-                    ? 'bg-[#272320] border border-[#D9B98D]/40 text-[#F1E2CB]'
-                    : 'hover:bg-[#272320]/60 text-[#A99D8E] hover:text-[#F1E2CB]'
+                    ? 'bg-[#272320] border border-[#D9B98D]/40 text-[#FDF8F0]'
+                    : 'hover:bg-[#272320]/60 text-[#A99D8E] hover:text-[#FDF8F0]'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
@@ -110,17 +112,19 @@ export const AIConversationList: React.FC<AIConversationListProps> = ({
                 {isConfirming ? (
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
+                      type="button"
                       onClick={(e) => confirmDelete(conv.id, e)}
-                      className="px-2 py-0.5 rounded-md bg-red-600/90 text-white text-[10px] font-medium"
+                      className="px-2 py-0.5 rounded-md bg-red-600/90 text-white text-[10px] font-medium cursor-pointer"
                     >
-                      Excluir
+                      {t('common.delete')}
                     </button>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteConfirmId(null);
                       }}
-                      className="p-0.5 text-[#A99D8E] hover:text-[#F1E2CB]"
+                      className="p-0.5 text-[#A99D8E] hover:text-[#FDF8F0] cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -129,9 +133,9 @@ export const AIConversationList: React.FC<AIConversationListProps> = ({
                   <button
                     type="button"
                     onClick={(e) => handleDelete(conv.id, e)}
-                    aria-label="Delete conversation"
-                    className="p-1 rounded-lg text-[#7A7165] hover:text-red-400 hover:bg-[#191715] opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Excluir conversa"
+                    aria-label={t('common.delete')}
+                    className="p-1 rounded-lg text-[#7A7165] hover:text-red-400 hover:bg-[#191715] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    title={t('common.delete')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Bookmark, Check, Copy, Palette as PaletteIcon } from 'lucide-react';
 import { AIPaletteData } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
 import { saveGeneratedPalette } from '../../services/paletteService';
 
 interface AIPaletteCardProps {
@@ -10,6 +11,7 @@ interface AIPaletteCardProps {
 
 export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -29,7 +31,7 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
       setIsSaved(true);
     } catch (err: any) {
       console.error('Failed to save palette:', err);
-      alert('Falha ao salvar a paleta na sua biblioteca.');
+      alert(t('errors.generic'));
     } finally {
       setIsSaving(false);
     }
@@ -53,9 +55,9 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
         <div>
           <div className="flex items-center gap-1.5 text-xs text-[#D9B98D] font-medium font-sans mb-0.5">
             <PaletteIcon className="w-3.5 h-3.5" />
-            <span>Paleta Gerada</span>
+            <span>{t('palettes.generateWithAI')}</span>
           </div>
-          <h4 className="font-serif text-[17px] font-normal text-[#F1E2CB] leading-tight">
+          <h4 className="font-display text-[17px] font-semibold text-[#FDF8F0] leading-tight">
             {palette.paletteName}
           </h4>
           <p className="text-[11px] font-sans text-[#A99D8E] mt-0.5">
@@ -80,7 +82,7 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
               style={{ backgroundColor: c.hex }}
             />
             <div className="flex-1 min-w-0">
-              <span className="font-sans text-xs text-[#F1E2CB] font-medium block truncate">
+              <span className="font-sans text-xs text-[#FDF8F0] font-medium block truncate">
                 {c.name}
               </span>
               <p className="text-[10px] font-sans text-[#A99D8E] truncate">
@@ -98,7 +100,7 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
       {palette.usageTips && palette.usageTips.length > 0 && (
         <div className="bg-[#272320]/60 p-2.5 rounded-xl border border-[#3A332C] text-left">
           <h5 className="text-[11px] font-sans font-medium text-[#D9B98D] mb-1">
-            Dicas de Aplicação
+            {t('palettes.usageTips')}
           </h5>
           <ul className="list-disc list-inside text-[10px] font-sans text-[#A99D8E] space-y-0.5">
             {palette.usageTips.map((tip, idx) => (
@@ -111,27 +113,29 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
       {/* Action Buttons */}
       <div className="flex gap-2 pt-1 border-t border-[#2D2824]">
         <button
+          type="button"
           onClick={handleCopyColors}
-          aria-label="Copiar cores"
-          className="flex-1 py-2 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E] hover:text-[#F1E2CB] hover:bg-[#272320] flex items-center justify-center gap-1.5 transition-colors"
+          aria-label={t('palettes.copyColors')}
+          className="flex-1 py-2 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E] hover:text-[#FDF8F0] hover:bg-[#272320] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
           {isCopied ? (
             <>
               <Check className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-400">Copiado!</span>
+              <span className="text-emerald-400">{t('common.done')}</span>
             </>
           ) : (
             <>
               <Copy className="w-3.5 h-3.5" />
-              <span>Copiar cores</span>
+              <span>{t('palettes.copyColors')}</span>
             </>
           )}
         </button>
 
         <button
+          type="button"
           onClick={handleSave}
           disabled={isSaved || isSaving}
-          className={`flex-1 py-2 rounded-full text-xs font-sans font-medium flex items-center justify-center gap-1.5 transition-all shadow-sm ${
+          className={`flex-1 py-2 rounded-full text-xs font-sans font-medium flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer ${
             isSaved
               ? 'bg-[#3A332C] text-[#D9B98D] border border-[#52483E] cursor-default'
               : 'bg-[#D9B98D] text-[#191715] hover:bg-[#E8DAC7] active:scale-95'
@@ -140,12 +144,12 @@ export const AIPaletteCard: React.FC<AIPaletteCardProps> = ({ palette }) => {
           {isSaved ? (
             <>
               <Check className="w-3.5 h-3.5" />
-              <span>✓ Paleta salva no ArtFlow</span>
+              <span>✓ {t('palettes.savedInArtFlow')}</span>
             </>
           ) : (
             <>
               <Bookmark className="w-3.5 h-3.5" />
-              <span>{isSaving ? 'Salvando...' : 'Salvar paleta'}</span>
+              <span>{isSaving ? t('common.loading') : t('palettes.savePalette')}</span>
             </>
           )}
         </button>

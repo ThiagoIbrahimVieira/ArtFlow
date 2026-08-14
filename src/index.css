@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 @layer utilities {
+  .font-display,
   .font-serif {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
   }
   .font-sans {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;

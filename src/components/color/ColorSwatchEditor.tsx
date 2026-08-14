@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { ColorPicker } from './ColorPicker';
+import { useLanguage } from '../../hooks/useLanguage';
 
 interface ColorSwatchEditorProps {
   colors: string[];
@@ -11,6 +12,7 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
   colors,
   onChange,
 }) => {
+  const { t } = useLanguage();
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
   const activeColor = colors[selectedIndex] || colors[0] || '#D9B98D';
@@ -42,10 +44,10 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
     <div className="space-y-3.5 text-left">
       <div className="flex items-center justify-between">
         <label className="text-xs font-sans text-[#A99D8E] font-medium">
-          Cores da Paleta ({colors.length}/10)
+          {t('palettes.colorsCount')} ({colors.length}/10)
         </label>
         <span className="text-[10px] font-sans text-[#7A7165]">
-          Toque em uma cor para editar
+          HEX / HSB
         </span>
       </div>
 
@@ -58,10 +60,10 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedIndex(idx)}
-                aria-label={`Select Color ${idx + 1}`}
-                className={`w-10 h-10 rounded-xl border-2 transition-all shadow-md relative overflow-hidden flex items-center justify-center ${
+                aria-label={`Color ${idx + 1}`}
+                className={`w-10 h-10 rounded-xl border-2 transition-all shadow-md relative overflow-hidden flex items-center justify-center cursor-pointer ${
                   isSelected
-                    ? 'border-[#F1E2CB] scale-105 ring-2 ring-[#D9B98D]/50'
+                    ? 'border-[#FDF8F0] scale-105 ring-2 ring-[#D9B98D]/50'
                     : 'border-[#433D37] hover:border-[#D9B98D]'
                 }`}
                 style={{ backgroundColor: hex }}
@@ -78,8 +80,8 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
                     e.stopPropagation();
                     handleRemoveColor(idx);
                   }}
-                  aria-label="Remove color"
-                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600/90 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                  aria-label={t('colorPicker.removeColor')}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600/90 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow cursor-pointer"
                 >
                   <Trash2 className="w-2.5 h-2.5" />
                 </button>
@@ -92,9 +94,9 @@ export const ColorSwatchEditor: React.FC<ColorSwatchEditorProps> = ({
           <button
             type="button"
             onClick={handleAddColor}
-            aria-label="Add Color"
-            className="w-10 h-10 rounded-xl border border-dashed border-[#51483E] text-[#A99D8E] hover:text-[#F1E2CB] hover:border-[#D9B98D] flex items-center justify-center transition-colors"
-            title="Adicionar cor"
+            aria-label={t('colorPicker.addColor')}
+            className="w-10 h-10 rounded-xl border border-dashed border-[#51483E] text-[#A99D8E] hover:text-[#FDF8F0] hover:border-[#D9B98D] flex items-center justify-center transition-colors cursor-pointer"
+            title={t('colorPicker.addColor')}
           >
             <Plus className="w-4 h-4" />
           </button>

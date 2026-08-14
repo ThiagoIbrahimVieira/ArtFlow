@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sun, ArrowRight, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DeviantArtArtwork } from '../types';
 import { deviantArtProvider } from '../services/deviantArtProvider';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface DailyInspirationCardProps {
   onSelectArtwork: (artwork: DeviantArtArtwork) => void;
@@ -10,6 +11,7 @@ interface DailyInspirationCardProps {
 export const DailyInspirationCard: React.FC<DailyInspirationCardProps> = ({
   onSelectArtwork,
 }) => {
+  const { t } = useLanguage();
   const [artworks, setArtworks] = useState<DeviantArtArtwork[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ export const DailyInspirationCard: React.FC<DailyInspirationCardProps> = ({
       setCurrentIndex(0);
     } catch (err: any) {
       console.warn('Failed to load Daily Deviations:', err);
-      setError('Não foi possível carregar a inspiração de hoje.');
+      setError(t('errors.generic'));
     } finally {
       setLoading(false);
     }
@@ -70,14 +72,15 @@ export const DailyInspirationCard: React.FC<DailyInspirationCardProps> = ({
       <div className="relative w-full min-h-[200px] rounded-3xl overflow-hidden bg-[#272320] border border-[#433D37] p-5 flex flex-col items-center justify-center text-center space-y-3">
         <Sun className="w-8 h-8 text-[#D9B98D] opacity-60" />
         <p className="text-xs font-sans text-[#A99D8E] max-w-[260px]">
-          {error || 'Não foi possível carregar a inspiração de hoje.'}
+          {error || t('errors.generic')}
         </p>
         <button
+          type="button"
           onClick={fetchDailyDeviations}
           className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#191715] border border-[#433D37] text-[#D9B98D] text-xs font-sans font-medium rounded-full hover:bg-[#332E2A] transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          <span>Tentar novamente</span>
+          <span>{t('common.retry')}</span>
         </button>
       </div>
     );
@@ -106,25 +109,27 @@ export const DailyInspirationCard: React.FC<DailyInspirationCardProps> = ({
       <div className="relative z-10 p-5 min-h-[220px] flex flex-col justify-between pointer-events-none">
         {/* Header tag */}
         <div className="flex items-center justify-between pointer-events-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#191715]/70 backdrop-blur-md border border-white/10 w-fit text-[#F1E2CB]">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#191715]/75 backdrop-blur-md border border-white/10 w-fit text-[#FDF8F0]">
             <Sun className="w-3.5 h-3.5 stroke-[1.8] text-[#D9B98D]" />
-            <span className="text-[11px] font-sans font-medium">Daily Inspiration</span>
+            <span className="text-[11px] font-sans font-medium">{t('home.dailyInspiration')}</span>
           </div>
 
           {/* Prev/Next arrows on hover */}
           {artworks.length > 1 && (
             <div className="flex items-center gap-1 opacity-80 hover:opacity-100 transition-opacity">
               <button
+                type="button"
                 onClick={handlePrev}
                 aria-label="Previous artwork"
-                className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-colors"
+                className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
               <button
+                type="button"
                 onClick={handleNext}
                 aria-label="Next artwork"
-                className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-colors"
+                className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -137,21 +142,22 @@ export const DailyInspirationCard: React.FC<DailyInspirationCardProps> = ({
           className="my-3 max-w-[280px] pointer-events-auto cursor-pointer"
           onClick={() => onSelectArtwork(currentArt)}
         >
-          <h3 className="font-serif text-[20px] sm:text-[22px] leading-[1.25] text-[#F1E2CB] font-normal tracking-tight truncate">
+          <h3 className="font-display text-[20px] sm:text-[22px] leading-[1.25] text-[#FDF8F0] font-semibold tracking-tight truncate">
             {currentArt.title}
           </h3>
           <p className="text-xs font-sans text-[#D9B98D] mt-0.5 truncate">
-            Art by {currentArt.artist}
+            {t('home.byArtist')} {currentArt.artist}
           </p>
         </div>
 
         {/* Actions & pagination dots */}
         <div className="flex items-center justify-between pt-1 pointer-events-auto">
           <button
+            type="button"
             onClick={() => onSelectArtwork(currentArt)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#F1E2CB] text-[#191715] hover:bg-[#D9B98D] transition-all font-sans text-xs font-medium active:scale-95 shadow-md"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FDF8F0] text-[#191715] hover:bg-[#D9B98D] transition-all font-sans text-xs font-medium active:scale-95 shadow-md cursor-pointer"
           >
-            <span>Ver Obra</span>
+            <span>{t('home.viewArtwork')}</span>
             <ArrowRight className="w-3.5 h-3.5 stroke-[2]" />
           </button>
 
@@ -160,12 +166,13 @@ export const DailyInspirationCard: React.FC<DailyInspirationCardProps> = ({
             {artworks.slice(0, 5).map((_, idx) => (
               <button
                 key={idx}
+                type="button"
                 onClick={() => setCurrentIndex(idx)}
                 aria-label={`Go to slide ${idx + 1}`}
-                className={`rounded-full transition-all ${
+                className={`rounded-full transition-all cursor-pointer ${
                   currentIndex % 5 === idx
-                    ? 'w-2.5 h-2.5 bg-[#F1E2CB]'
-                    : 'w-1.5 h-1.5 bg-[#F1E2CB]/40 hover:bg-[#F1E2CB]/70'
+                    ? 'w-2.5 h-2.5 bg-[#FDF8F0]'
+                    : 'w-1.5 h-1.5 bg-[#FDF8F0]/40 hover:bg-[#FDF8F0]/70'
                 }`}
               />
             ))}

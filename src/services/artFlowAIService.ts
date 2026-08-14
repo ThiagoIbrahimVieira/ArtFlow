@@ -60,6 +60,7 @@ export async function sendArtFlowAIMessage(
       conversationId: req.conversationId,
       message: req.message,
       intent: req.intent,
+      preferredLanguage: req.preferredLanguage,
       projectId: req.projectId,
       history: req.history,
     }),

@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { Languages } from 'lucide-react';
 import { HERO_ARTWORK_URL } from '../data/mockData';
 import { FormInput } from '../components/FormInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ArtworkImage } from '../components/ArtworkImage';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { signIn, resetPassword } = useAuth();
+  const { t, openLanguageModal } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export const LoginPage: React.FC = () => {
       await signIn(email, password);
       navigate('/home', { replace: true });
     } catch (err: any) {
-      setError(err?.message || 'Invalid email or password.');
+      setError(err?.message || t('auth.invalidCredentials'));
     } finally {
       setIsSubmitting(false);
     }
@@ -35,7 +37,7 @@ export const LoginPage: React.FC = () => {
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      setError('Please enter your email address to reset your password.');
+      setError(t('auth.forgotPasswordPrompt'));
       return;
     }
     setError(null);
@@ -46,24 +48,26 @@ export const LoginPage: React.FC = () => {
       const res = await resetPassword(email);
       setResetMessage(res.message);
     } catch (err: any) {
-      setError(err?.message || 'Failed to send password reset email.');
+      setError(err?.message || t('errors.generic'));
     } finally {
       setIsResetting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] flex flex-col justify-between p-4 sm:p-5 max-w-[440px] mx-auto pb-8">
+    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] flex flex-col justify-between p-4 sm:p-5 max-w-[440px] mx-auto pb-8 text-left">
       {/* Header */}
       <header className="flex items-center justify-between pt-2 pb-3">
-        <h1 className="font-serif text-[28px] font-normal tracking-tight text-[#F1E2CB]">
+        <h1 className="font-display text-[28px] font-semibold tracking-tight text-[#FDF8F0]">
           ArtFlow
         </h1>
         <button
-          aria-label="Notifications"
-          className="w-10 h-10 rounded-full bg-[#272320] border border-[#433D37] flex items-center justify-center text-[#F1E2CB] hover:bg-[#332E2A] transition-colors shadow-sm"
+          type="button"
+          onClick={openLanguageModal}
+          aria-label={t('common.language')}
+          className="w-10 h-10 rounded-full bg-[#272320] border border-[#433D37] flex items-center justify-center text-[#FDF8F0] hover:bg-[#332E2A] transition-colors shadow-sm cursor-pointer"
         >
-          <Bell className="w-[18px] h-[18px] stroke-[1.75]" />
+          <Languages className="w-[18px] h-[18px] stroke-[1.75]" />
         </button>
       </header>
 
@@ -80,11 +84,11 @@ export const LoginPage: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-tr from-black/80 via-black/40 to-transparent" />
           
           <div className="absolute bottom-5 left-5 right-5 text-left z-10">
-            <h2 className="font-serif text-[38px] font-normal text-[#F1E2CB] leading-tight tracking-tight drop-shadow-md">
-              Log In
+            <h2 className="font-display text-[36px] sm:text-[38px] font-semibold text-[#FDF8F0] leading-tight tracking-tight drop-shadow-md">
+              {t('auth.loginTitle')}
             </h2>
             <p className="font-sans text-xs text-[#EEDCC6]/90 mt-1 max-w-[240px] leading-relaxed">
-              Welcome back to your creative workspace.
+              {t('auth.loginSubtitle')}
             </p>
           </div>
         </div>
@@ -95,16 +99,16 @@ export const LoginPage: React.FC = () => {
           <div className="flex bg-[#E8DAC7] p-1 rounded-2xl mb-4 border border-[#D5C6B1]">
             <button
               type="button"
-              className="flex-1 py-1.5 text-xs font-sans font-semibold rounded-xl bg-[#191715] text-[#F1E2CB] shadow-sm transition-all"
+              className="flex-1 py-1.5 text-xs font-sans font-semibold rounded-xl bg-[#191715] text-[#FDF8F0] shadow-sm transition-all"
             >
-              Log In
+              {t('auth.loginTab')}
             </button>
             <button
               type="button"
               onClick={() => navigate('/signup')}
-              className="flex-1 py-1.5 text-xs font-sans font-medium rounded-xl text-[#5C5144] hover:text-[#191715] transition-all"
+              className="flex-1 py-1.5 text-xs font-sans font-medium rounded-xl text-[#5C5144] hover:text-[#191715] transition-all cursor-pointer"
             >
-              Sign Up
+              {t('auth.signUpTab')}
             </button>
           </div>
 
@@ -122,18 +126,18 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <FormInput
-              label="Email"
+              label={t('auth.emailLabel')}
               type="email"
-              placeholder="Enter your email"
+              placeholder={t('auth.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
 
             <FormInput
-              label="Password"
+              label={t('auth.passwordLabel')}
               isPassword
-              placeholder="Enter your password"
+              placeholder={t('auth.passwordPlaceholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -144,15 +148,15 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={isResetting}
-                className="text-xs font-sans text-[#5C5144] hover:text-[#191715] underline"
+                className="text-xs font-sans text-[#5C5144] hover:text-[#191715] underline cursor-pointer"
               >
-                {isResetting ? 'Sending reset link...' : 'Forgot password?'}
+                {isResetting ? t('common.loading') : t('auth.forgotPassword')}
               </button>
             </div>
 
             <div className="pt-2">
               <PrimaryButton type="submit" variant="dark" size="lg" disabled={isSubmitting}>
-                {isSubmitting ? 'Logging in...' : 'Log in'}
+                {isSubmitting ? t('common.loading') : t('auth.loginButton')}
               </PrimaryButton>
             </div>
           </form>
@@ -160,13 +164,13 @@ export const LoginPage: React.FC = () => {
           {/* Footer Link */}
           <div className="mt-4 text-center">
             <p className="text-xs font-sans text-[#5C5144]">
-              Don't have an account?{' '}
+              {t('auth.dontHaveAccount')}{' '}
               <button
                 type="button"
                 onClick={() => navigate('/signup')}
-                className="font-semibold text-[#191715] hover:underline"
+                className="font-semibold text-[#191715] hover:underline cursor-pointer"
               >
-                Create account
+                {t('auth.createAccount')}
               </button>
             </p>
           </div>

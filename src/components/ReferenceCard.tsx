@@ -57,7 +57,7 @@ export const ReferenceCard: React.FC<ReferenceCardProps> = ({
         {/* Title bottom left */}
         {showTitle && (
           <div className="absolute bottom-3 left-3 right-3 text-left">
-            <h4 className="font-serif text-[15px] font-normal text-[#F1E2CB] leading-tight drop-shadow-sm truncate">
+            <h4 className="font-display text-[15px] font-semibold text-[#FDF8F0] leading-tight drop-shadow-sm truncate">
               {reference.title}
             </h4>
           </div>

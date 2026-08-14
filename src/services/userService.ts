@@ -138,6 +138,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       username: data.username ? `@${data.username.replace(/^@/, '')}` : '@artist',
       avatarUrl: data.avatarUrl || null,
       bio: data.bio || '',
+      language: data.language || undefined,
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
       updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,
     };
@@ -154,6 +155,7 @@ export async function updateUserProfile(
     username: string;
     avatarUrl: string | null;
     bio: string;
+    language: 'pt-BR' | 'en';
   }>
 ): Promise<Partial<UserProfile>> {
   const allowedUpdates: Record<string, any> = {
@@ -168,6 +170,9 @@ export async function updateUserProfile(
   }
   if (updates.avatarUrl !== undefined) {
     allowedUpdates.avatarUrl = updates.avatarUrl;
+  }
+  if (updates.language !== undefined) {
+    allowedUpdates.language = updates.language;
   }
   if (updates.username !== undefined) {
     const rawUsername = updates.username.replace(/^@/, '').toLowerCase().trim();

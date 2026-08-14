@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bookmark, Sun, Check } from 'lucide-react';
-import { Palette } from '../types';
+import { Palette, PaletteColor } from '../types';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface PaletteCardProps {
   palette: Palette;
@@ -15,6 +16,7 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
   onSaveToggle,
   className = '',
 }) => {
+  const { t } = useLanguage();
   const [isSaved, setIsSaved] = useState(palette.isSaved);
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
 
@@ -24,6 +26,11 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
     if (onSaveToggle) {
       onSaveToggle(palette.id);
     }
+  };
+
+  const getColorHex = (c: string | PaletteColor): string => {
+    if (typeof c === 'string') return c;
+    return c?.hex || '#000000';
   };
 
   const handleCopyColor = (color: string) => {
@@ -39,47 +46,54 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
     Cool: 'bg-[#202938] text-[#93B4D8] border-[#313E52]',
   };
 
+  const colorList = Array.isArray(palette.colors) ? palette.colors : [];
+
   if (isFeatured) {
     return (
       <div className={`w-full rounded-2xl bg-[#272320] border border-[#3A332C] p-4 shadow-md ${className}`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Sun className="w-4 h-4 text-[#D9B98D]" />
-            <span className="font-serif text-[17px] font-normal text-[#F1E2CB]">
+            <span className="font-display text-[17px] font-semibold text-[#FDF8F0]">
               {palette.name}
             </span>
           </div>
           <button
+            type="button"
             onClick={handleSave}
-            aria-label={isSaved ? "Saved palette" : "Save palette"}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-medium transition-all ${
+            aria-label={isSaved ? t('common.done') : t('common.save')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-medium transition-all cursor-pointer ${
               isSaved
                 ? 'bg-[#D9B98D] text-[#191715]'
-                : 'bg-[#191715] text-[#F1E2CB] border border-[#433D37] hover:bg-[#332E2A]'
+                : 'bg-[#191715] text-[#FDF8F0] border border-[#433D37] hover:bg-[#332E2A]'
             }`}
           >
             <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-[#191715]' : ''}`} />
-            <span>{isSaved ? 'Saved' : 'Save'}</span>
+            <span>{isSaved ? t('common.done') : t('common.save')}</span>
           </button>
         </div>
 
         {/* 5 Color Swatches */}
         <div className="grid grid-cols-5 gap-2 my-2.5">
-          {palette.colors.map((color, index) => (
-            <button
-              key={index}
-              onClick={() => handleCopyColor(color)}
-              title={`Click to copy ${color}`}
-              className="relative h-12 rounded-lg transition-transform active:scale-95 group overflow-hidden border border-white/5"
-              style={{ backgroundColor: color }}
-            >
-              {copiedColor === color && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
-                  <Check className="w-4 h-4" />
-                </div>
-              )}
-            </button>
-          ))}
+          {colorList.map((c, index) => {
+            const hex = getColorHex(c);
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => handleCopyColor(hex)}
+                title={`${t('common.copyHex')}: ${hex}`}
+                className="relative h-12 rounded-lg transition-transform active:scale-95 group overflow-hidden border border-white/5 cursor-pointer"
+                style={{ backgroundColor: hex }}
+              >
+                {copiedColor === hex && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                    <Check className="w-4 h-4" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {palette.description && (
@@ -94,7 +108,7 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
   return (
     <div className={`w-full rounded-2xl bg-[#272320] border border-[#3A332C] p-4 shadow-md ${className}`}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-serif text-[17px] font-normal text-[#F1E2CB]">
+        <h3 className="font-display text-[17px] font-semibold text-[#FDF8F0]">
           {palette.name}
         </h3>
         
@@ -106,9 +120,10 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
           </span>
 
           <button
+            type="button"
             onClick={handleSave}
-            aria-label={isSaved ? "Saved palette" : "Save palette"}
-            className="text-[#A99D8E] hover:text-[#D9B98D] p-1 transition-colors"
+            aria-label={isSaved ? t('common.done') : t('common.save')}
+            className="text-[#A99D8E] hover:text-[#D9B98D] p-1 transition-colors cursor-pointer"
           >
             <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-[#D9B98D] text-[#D9B98D]' : ''}`} />
           </button>
@@ -117,21 +132,25 @@ export const PaletteCard: React.FC<PaletteCardProps> = ({
 
       {/* 5 Color Swatches */}
       <div className="grid grid-cols-5 gap-2">
-        {palette.colors.map((color, index) => (
-          <button
-            key={index}
-            onClick={() => handleCopyColor(color)}
-            title={`Click to copy ${color}`}
-            className="relative h-12 rounded-lg transition-transform active:scale-95 group overflow-hidden border border-white/5"
-            style={{ backgroundColor: color }}
-          >
-            {copiedColor === color && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
-                <Check className="w-4 h-4" />
-              </div>
-            )}
-          </button>
-        ))}
+        {colorList.map((c, index) => {
+          const hex = getColorHex(c);
+          return (
+            <button
+              key={index}
+              type="button"
+              onClick={() => handleCopyColor(hex)}
+              title={`${t('common.copyHex')}: ${hex}`}
+              className="relative h-12 rounded-lg transition-transform active:scale-95 group overflow-hidden border border-white/5 cursor-pointer"
+              style={{ backgroundColor: hex }}
+            >
+              {copiedColor === hex && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                  <Check className="w-4 h-4" />
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

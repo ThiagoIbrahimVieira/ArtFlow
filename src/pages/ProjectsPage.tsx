@@ -6,10 +6,12 @@ import { ProjectCard } from '../components/ProjectCard';
 import { ProjectFormModal } from '../components/projects/ProjectFormModal';
 import { Project } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import { listProjects, createProject, updateProject, deleteProject } from '../services/projectService';
 
 export const ProjectsPage: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export const ProjectsPage: React.FC = () => {
       setProjects(data);
     } catch (err: any) {
       console.error('Failed to load projects:', err);
-      setError('Não foi possível carregar os projetos. Verifique sua conexão.');
+      setError(t('errors.firestoreError'));
     } finally {
       setLoading(false);
     }
@@ -109,50 +111,52 @@ export const ProjectsPage: React.FC = () => {
       setDeletingProjectId(null);
     } catch (err) {
       console.error('Failed to delete project:', err);
-      alert('Falha ao excluir o projeto.');
+      alert(t('errors.generic'));
     } finally {
       setIsDeleting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-24 text-left">
+    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-28 text-left">
       <AppHeader />
 
-      <main className="px-4 sm:px-5 space-y-4 pt-1">
+      <main className="px-4 sm:px-5 space-y-5 pt-1">
         {/* Title & New Project Action Button */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1">
           <div>
-            <h2 className="font-serif text-[24px] font-normal text-[#F1E2CB] leading-tight">
-              Meus Projetos
+            <h2 className="font-display text-[24px] sm:text-[26px] font-semibold text-[#FDF8F0] leading-tight tracking-tight">
+              {t('projects.myProjects')}
             </h2>
             <p className="text-xs font-sans text-[#A99D8E] mt-0.5">
-              Acompanhe sua produção e progresso artístico.
+              {t('projects.noProjectsDesc')}
             </p>
           </div>
 
           <button
+            type="button"
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D9B98D] text-[#191715] hover:bg-[#E8DAC7] text-xs font-sans font-medium transition-all shadow-sm active:scale-95 flex-shrink-0"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#D9B98D] text-[#191715] hover:bg-[#E8DAC7] text-xs font-sans font-medium transition-all shadow-sm active:scale-95 flex-shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Novo Projeto</span>
+            <span>{t('projects.newProject')}</span>
           </button>
         </div>
 
         {/* Vertically Stacked Project Cards */}
         {loading ? (
           <div className="py-12 text-center text-[#A99D8E] text-xs">
-            Carregando seus projetos...
+            {t('common.loading')}
           </div>
         ) : error ? (
           <div className="py-12 text-center space-y-3">
             <p className="text-sm font-sans text-red-400">{error}</p>
             <button
+              type="button"
               onClick={fetchProjects}
-              className="px-4 py-2 bg-[#272320] border border-[#433D37] text-[#D9B98D] text-xs font-sans rounded-xl hover:bg-[#332E2A] transition-colors"
+              className="px-4 py-2 bg-[#272320] border border-[#433D37] text-[#D9B98D] text-xs font-sans rounded-xl hover:bg-[#332E2A] transition-colors cursor-pointer"
             >
-              Tentar novamente
+              {t('common.retry')}
             </button>
           </div>
         ) : projects.length > 0 ? (
@@ -169,13 +173,14 @@ export const ProjectsPage: React.FC = () => {
         ) : (
           <div className="py-16 text-center text-[#A99D8E] space-y-3">
             <Folder className="w-10 h-10 mx-auto text-[#7A7165] opacity-50" />
-            <p className="text-sm font-sans">Nenhum projeto cadastrado ainda.</p>
+            <p className="text-sm font-sans">{t('projects.noProjectsFound')}</p>
             <button
+              type="button"
               onClick={handleOpenCreateModal}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#272320] border border-[#433D37] rounded-full text-xs font-sans text-[#D9B98D] hover:bg-[#332E2A] transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#272320] border border-[#433D37] rounded-full text-xs font-sans text-[#D9B98D] hover:bg-[#332E2A] transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Criar seu primeiro projeto</span>
+              <span>{t('projects.createFirstProject')}</span>
             </button>
           </div>
         )}
@@ -195,28 +200,28 @@ export const ProjectsPage: React.FC = () => {
       {deletingProjectId && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-[340px] bg-[#272320] border border-[#433D37] rounded-3xl p-5 text-[#F1E2CB] shadow-2xl space-y-4 text-left">
-            <h3 className="font-serif text-[18px] font-normal text-[#F1E2CB]">
-              Excluir Projeto?
+            <h3 className="font-display text-[18px] font-semibold text-[#FDF8F0]">
+              {t('projects.deleteConfirmTitle')}
             </h3>
             <p className="text-xs font-sans text-[#A99D8E] leading-relaxed">
-              Tem certeza de que deseja excluir este projeto? Esta ação não pode ser desfeita.
+              {t('projects.deleteConfirmText')}
             </p>
             <div className="flex gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setDeletingProjectId(null)}
                 disabled={isDeleting}
-                className="flex-1 py-2 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E] hover:bg-[#332E2A]"
+                className="flex-1 py-2 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E] hover:bg-[#332E2A] cursor-pointer"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
-                className="flex-1 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-xs font-sans transition-colors"
+                className="flex-1 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-xs font-sans transition-colors cursor-pointer"
               >
-                {isDeleting ? 'Excluindo...' : 'Excluir'}
+                {isDeleting ? t('common.loading') : t('common.delete')}
               </button>
             </div>
           </div>

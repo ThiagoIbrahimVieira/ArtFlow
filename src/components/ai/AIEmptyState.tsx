@@ -1,57 +1,53 @@
 import React from 'react';
 import { Sparkles, Palette, Lightbulb, PenTool, Search, Layout, HelpCircle } from 'lucide-react';
+import { useLanguage } from '../../hooks/useLanguage';
 
 interface AIEmptyStateProps {
   onSelectAction: (prompt: string, intent?: 'chat' | 'create_palette' | 'research' | 'art_feedback') => void;
 }
 
-interface QuickAction {
-  label: string;
-  icon: React.ElementType;
-  prompt: string;
-  intent?: 'chat' | 'create_palette' | 'research' | 'art_feedback';
-}
-
-const QUICK_ACTIONS: QuickAction[] = [
-  {
-    label: 'Criar uma paleta',
-    icon: Palette,
-    prompt: 'Quero criar uma paleta de cores para uma nova arte. Pode me ajudar com sugestões?',
-    intent: 'create_palette',
-  },
-  {
-    label: 'Me dê uma ideia',
-    icon: Lightbulb,
-    prompt: 'Estou sem ideias para desenhar. Pode me ajudar a desenvolver um conceito envolvente?',
-    intent: 'chat',
-  },
-  {
-    label: 'Aprender uma técnica',
-    icon: PenTool,
-    prompt: 'Quero aprender técnicas para melhorar minha pintura digital e iluminação.',
-    intent: 'chat',
-  },
-  {
-    label: 'Pesquisar sobre arte',
-    icon: Search,
-    prompt: 'Quero pesquisar sobre referências de movimentos artísticos e técnicas clássicas.',
-    intent: 'research',
-  },
-  {
-    label: 'Melhorar composição',
-    icon: Layout,
-    prompt: 'Quais são as melhores regras e guias de composição para direcionar o foco visual numa ilustração?',
-    intent: 'art_feedback',
-  },
-  {
-    label: 'Teoria das cores',
-    icon: HelpCircle,
-    prompt: 'Pode me explicar como escolher valores tonais e aplicar harmonia complementar dividida?',
-    intent: 'chat',
-  },
-];
-
 export const AIEmptyState: React.FC<AIEmptyStateProps> = ({ onSelectAction }) => {
+  const { t } = useLanguage();
+
+  const quickActions = [
+    {
+      label: t('ai.quickActions.createPalette'),
+      icon: Palette,
+      prompt: t('ai.prompts.createPalette'),
+      intent: 'create_palette' as const,
+    },
+    {
+      label: t('ai.quickActions.giveIdea'),
+      icon: Lightbulb,
+      prompt: t('ai.prompts.giveIdea'),
+      intent: 'chat' as const,
+    },
+    {
+      label: t('ai.quickActions.learnTechnique'),
+      icon: PenTool,
+      prompt: t('ai.prompts.learnTechnique'),
+      intent: 'chat' as const,
+    },
+    {
+      label: t('ai.quickActions.researchArt'),
+      icon: Search,
+      prompt: t('ai.prompts.researchArt'),
+      intent: 'research' as const,
+    },
+    {
+      label: t('ai.quickActions.improveComposition'),
+      icon: Layout,
+      prompt: t('ai.prompts.improveComposition'),
+      intent: 'art_feedback' as const,
+    },
+    {
+      label: t('ai.quickActions.colorTheory'),
+      icon: HelpCircle,
+      prompt: t('ai.prompts.colorTheory'),
+      intent: 'chat' as const,
+    },
+  ];
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-5 my-auto max-w-[420px] mx-auto">
       {/* Icon & Title */}
@@ -60,27 +56,26 @@ export const AIEmptyState: React.FC<AIEmptyStateProps> = ({ onSelectAction }) =>
           <Sparkles className="w-6 h-6" />
         </div>
 
-        <h3 className="font-serif text-[24px] font-normal text-[#F1E2CB] tracking-tight">
+        <h3 className="font-display text-[24px] font-semibold text-[#FDF8F0] tracking-tight">
           ✦ ArtFlow AI
         </h3>
         <p className="text-xs font-sans text-[#A99D8E] leading-relaxed max-w-[320px] mx-auto">
-          Seu parceiro criativo para arte. Posso ajudar você a desenvolver ideias,
-          explorar estilos, estudar técnicas e criar.
+          {t('ai.emptyDescription')}
         </p>
       </div>
 
       {/* Quick Action Chips Grid */}
       <div className="w-full grid grid-cols-2 gap-2 pt-2">
-        {QUICK_ACTIONS.map((act, idx) => {
+        {quickActions.map((act, idx) => {
           const Icon = act.icon;
           return (
             <button
               key={idx}
               type="button"
               onClick={() => onSelectAction(act.prompt, act.intent)}
-              className="p-3 rounded-2xl bg-[#272320]/90 hover:bg-[#272320] border border-[#3A332C] hover:border-[#D9B98D]/60 text-left transition-all active:scale-95 shadow-sm group flex flex-col justify-between min-h-[72px]"
+              className="p-3 rounded-2xl bg-[#272320]/90 hover:bg-[#272320] border border-[#3A332C] hover:border-[#D9B98D]/60 text-left transition-all active:scale-95 shadow-sm group flex flex-col justify-between min-h-[72px] cursor-pointer"
             >
-              <div className="flex items-center gap-2 text-xs font-sans text-[#F1E2CB] font-medium group-hover:text-[#D9B98D]">
+              <div className="flex items-center gap-2 text-xs font-sans text-[#FDF8F0] font-medium group-hover:text-[#D9B98D]">
                 <Icon className="w-3.5 h-3.5 text-[#D9B98D] flex-shrink-0" />
                 <span className="truncate">{act.label}</span>
               </div>

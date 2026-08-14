@@ -7,6 +7,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { ArtworkImage } from '../components/ArtworkImage';
 import { Activity, Project } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import { updateUserProfile, getUserRecentActivities } from '../services/userService';
 import { listProjects } from '../services/projectService';
 import { listReferences } from '../services/referenceService';
@@ -22,6 +23,7 @@ function getInitials(name: string): string {
 
 export const ProfilePage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
+  const { t } = useLanguage();
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bioInput, setBioInput] = useState('');
   const [isSavingBio, setIsSavingBio] = useState(false);
@@ -102,11 +104,11 @@ export const ProfilePage: React.FC = () => {
       await updateUserProfile(user.uid, { bio: bioInput.trim() });
       await refreshProfile();
       setIsEditingBio(false);
-      setStatusMessage({ text: 'Bio atualizada com sucesso!' });
+      setStatusMessage({ text: t('common.done') });
       setTimeout(() => setStatusMessage(null), 3000);
     } catch (err) {
       console.error('Failed to update bio:', err);
-      setStatusMessage({ text: 'Falha ao atualizar bio.', isError: true });
+      setStatusMessage({ text: t('errors.generic'), isError: true });
     } finally {
       setIsSavingBio(false);
     }
@@ -117,11 +119,11 @@ export const ProfilePage: React.FC = () => {
     if (!file || !user) return;
 
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setStatusMessage({ text: 'Formato inválido. Use JPEG, PNG ou WebP.', isError: true });
+      setStatusMessage({ text: t('errors.invalidImage'), isError: true });
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setStatusMessage({ text: 'A imagem deve ter no máximo 5 MB.', isError: true });
+    if (file.size > 10 * 1024 * 1024) {
+      setStatusMessage({ text: t('errors.invalidImage'), isError: true });
       return;
     }
 
@@ -132,14 +134,14 @@ export const ProfilePage: React.FC = () => {
       const uploadRes = await uploadImageFile(file, 'avatar');
       await updateUserProfile(user.uid, { avatarUrl: uploadRes.url });
       await refreshProfile();
-      setStatusMessage({ text: 'Foto de perfil atualizada!' });
+      setStatusMessage({ text: t('upload.uploadSuccess') });
       setTimeout(() => setStatusMessage(null), 3000);
     } catch (err: any) {
       console.warn('Avatar upload error:', err);
       if (err?.message?.includes('Vercel Blob') || err?.message?.includes('não configurado')) {
-        setStatusMessage({ text: 'Armazenamento Vercel Blob não configurado na Vercel.', isError: true });
+        setStatusMessage({ text: 'Vercel Blob storage not configured.', isError: true });
       } else {
-        setStatusMessage({ text: err?.message || 'Falha ao atualizar foto de perfil.', isError: true });
+        setStatusMessage({ text: err?.message || t('upload.uploadError'), isError: true });
       }
     } finally {
       setIsUploadingAvatar(false);
@@ -157,14 +159,14 @@ export const ProfilePage: React.FC = () => {
 
   const name = profile?.displayName || profile?.name || user?.displayName || 'Artist';
   const username = profile?.username || '@artist';
-  const bio = profile?.bio || 'Artista criando no ArtFlow.';
+  const bio = profile?.bio || 'Artist creating on ArtFlow.';
   const avatarUrl = profile?.avatarUrl || null;
 
   return (
-    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-24 text-left">
+    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-28 text-left">
       <AppHeader />
 
-      <main className="px-4 sm:px-5 space-y-5 pt-1">
+      <main className="px-4 sm:px-5 space-y-6 pt-1">
         {/* Status Toast message */}
         {statusMessage && (
           <div
@@ -179,7 +181,7 @@ export const ProfilePage: React.FC = () => {
         )}
 
         {/* Profile Info Card */}
-        <div className="w-full bg-[#272320] border border-[#3A332C] rounded-3xl p-4 shadow-md space-y-4">
+        <div className="w-full bg-[#272320] border border-[#3A332C] rounded-3xl p-5 shadow-md space-y-4">
           <div className="flex items-center gap-4">
             {/* Avatar with upload trigger */}
             <div className="relative w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-[#433D37] shadow-inner bg-[#191715]">
@@ -191,7 +193,7 @@ export const ProfilePage: React.FC = () => {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <span className="font-serif text-2xl text-[#D9B98D] tracking-wider font-semibold">
+                  <span className="font-display text-2xl text-[#D9B98D] tracking-wider font-semibold">
                     {getInitials(name)}
                   </span>
                 </div>
@@ -206,8 +208,8 @@ export const ProfilePage: React.FC = () => {
                   type="button"
                   onClick={() => avatarInputRef.current?.click()}
                   aria-label="Upload profile image"
-                  className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-[#191715]/90 text-[#F1E2CB] flex items-center justify-center border border-white/20 hover:bg-[#191715] transition-colors"
-                  title="Alterar foto de perfil"
+                  className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-[#191715]/90 text-[#FDF8F0] flex items-center justify-center border border-white/20 hover:bg-[#191715] transition-colors cursor-pointer"
+                  title="Upload profile picture"
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
@@ -224,7 +226,7 @@ export const ProfilePage: React.FC = () => {
 
             {/* Profile Info */}
             <div className="flex-1 min-w-0">
-              <h2 className="font-serif text-[22px] font-normal text-[#F1E2CB] leading-tight truncate">
+              <h2 className="font-display text-[22px] font-semibold text-[#FDF8F0] leading-tight truncate">
                 {name}
               </h2>
               <p className="text-xs font-sans text-[#A99D8E] mt-0.5">
@@ -238,14 +240,15 @@ export const ProfilePage: React.FC = () => {
                     value={bioInput}
                     onChange={(e) => setBioInput(e.target.value)}
                     maxLength={200}
-                    className="w-full px-2 py-1 text-xs bg-[#191715] border border-[#433D37] rounded-lg text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D]"
+                    className="w-full px-2 py-1 text-xs font-sans bg-[#191715] border border-[#433D37] rounded-lg text-[#FDF8F0] focus:outline-none focus:border-[#D9B98D]"
                   />
                   <button
+                    type="button"
                     onClick={handleSaveBio}
                     disabled={isSavingBio}
-                    className="px-2.5 py-1 text-xs bg-[#D9B98D] text-[#191715] rounded-lg font-medium hover:bg-[#E8DAC7] disabled:opacity-50"
+                    className="px-2.5 py-1 text-xs font-sans bg-[#D9B98D] text-[#191715] rounded-lg font-medium hover:bg-[#E8DAC7] disabled:opacity-50 cursor-pointer"
                   >
-                    {isSavingBio ? '...' : 'Salvar'}
+                    {isSavingBio ? '...' : t('common.save')}
                   </button>
                 </div>
               ) : (
@@ -254,9 +257,10 @@ export const ProfilePage: React.FC = () => {
                     {bio}
                   </p>
                   <button
+                    type="button"
                     onClick={() => setIsEditingBio(true)}
-                    className="text-[#A99D8E] hover:text-[#F1E2CB] p-0.5"
-                    title="Editar bio"
+                    className="text-[#A99D8E] hover:text-[#FDF8F0] p-0.5 cursor-pointer"
+                    title={t('profile.editBio')}
                   >
                     <Pencil className="w-3 h-3" />
                   </button>
@@ -284,17 +288,18 @@ export const ProfilePage: React.FC = () => {
         {/* Account Actions / Logout */}
         <div className="flex justify-end">
           <button
+            type="button"
             onClick={handleLogout}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#272320] border border-[#3A332C] text-[#E06D53] hover:bg-[#332E2A] text-xs font-sans font-medium transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#272320] border border-[#3A332C] text-[#E06D53] hover:bg-[#332E2A] text-xs font-sans font-medium transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
-            <span>Encerrar Sessão</span>
+            <span>{t('profile.logOut')}</span>
           </button>
         </div>
 
         {/* Real Achievements Section (Computed from actual data) */}
         <section>
-          <SectionHeader title="Conquistas Reais" />
+          <SectionHeader title={t('profile.finishedWorks')} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Finished Works (computed from real completed projects) */}
@@ -303,11 +308,11 @@ export const ProfilePage: React.FC = () => {
                 <CheckCircle className="w-6 h-6" />
               </div>
               <div className="min-w-0">
-                <h4 className="font-serif text-[16px] font-normal text-[#F1E2CB]">
-                  {finishedProjectsCount} Obras Finalizadas
+                <h4 className="font-display text-[16px] font-semibold text-[#FDF8F0]">
+                  {finishedProjectsCount} {t('profile.finishedWorks')}
                 </h4>
                 <p className="text-[11px] font-sans text-[#A99D8E] mt-0.5">
-                  Projetos com 100% de conclusão.
+                  100% {t('common.progress')}
                 </p>
               </div>
             </div>
@@ -318,11 +323,11 @@ export const ProfilePage: React.FC = () => {
                 <Star className="w-6 h-6" />
               </div>
               <div className="min-w-0">
-                <h4 className="font-serif text-[16px] font-normal text-[#F1E2CB]">
-                  {stats?.referencesCount ?? 0} Referências Salvas
+                <h4 className="font-display text-[16px] font-semibold text-[#FDF8F0]">
+                  {stats?.referencesCount ?? 0} {t('profile.totalReferences')}
                 </h4>
                 <p className="text-[11px] font-sans text-[#A99D8E] mt-0.5">
-                  Biblioteca visual de inspiração.
+                  {t('references.myReferences')}
                 </p>
               </div>
             </div>
@@ -331,11 +336,11 @@ export const ProfilePage: React.FC = () => {
 
         {/* Real Recent Activity Section (No mocks) */}
         <section>
-          <SectionHeader title="Atividade Recente" />
+          <SectionHeader title={t('profile.recentActivity')} />
 
           {activitiesLoading ? (
-            <div className="py-6 text-center text-xs text-[#A99D8E]">
-              Carregando atividades...
+            <div className="py-6 text-center text-xs font-sans text-[#A99D8E]">
+              {t('common.loading')}
             </div>
           ) : recentActivities.length > 0 ? (
             <div className="bg-[#272320] border border-[#3A332C] rounded-2xl divide-y divide-[#3A332C] overflow-hidden">
@@ -372,7 +377,7 @@ export const ProfilePage: React.FC = () => {
                       <p className="text-[11px] font-sans text-[#A99D8E] truncate">
                         {act.title}
                       </p>
-                      <h5 className="font-serif text-[14px] text-[#F1E2CB] font-normal truncate">
+                      <h5 className="font-display text-[14px] text-[#FDF8F0] font-semibold truncate">
                         {act.targetName}
                       </h5>
                       <span className="text-[10px] font-sans text-[#7A7165]">
@@ -385,7 +390,7 @@ export const ProfilePage: React.FC = () => {
             </div>
           ) : (
             <div className="py-8 text-center text-xs font-sans text-[#7A7165] bg-[#272320]/40 rounded-2xl border border-[#3A332C]">
-              Nenhuma atividade recente registrada ainda.
+              {t('profile.noRecentActivity')}
             </div>
           )}
         </section>

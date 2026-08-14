@@ -16,6 +16,7 @@ export const ChatRequestSchema = z.object({
   conversationId: z.string().max(128).optional(),
   message: z.string().trim().min(1, { message: 'Message cannot be empty.' }).max(4000, { message: 'Message cannot exceed 4000 characters.' }),
   intent: z.enum(['chat', 'create_palette', 'research', 'art_feedback']).optional(),
+  preferredLanguage: z.enum(['pt-BR', 'en']).optional(),
   projectId: z.string().max(128).optional(),
   history: z.array(ChatHistoryItemSchema).max(30).optional(),
 });
@@ -282,6 +283,7 @@ async function processArtFlowAIChat(params: {
   message: string;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
   intent?: 'chat' | 'create_palette' | 'research' | 'art_feedback';
+  preferredLanguage?: 'pt-BR' | 'en';
   projectId?: string;
   db: Firestore | null;
 }) {
@@ -312,8 +314,12 @@ Descrição: ${pData.description || 'Sem descrição'}`;
     }
   }
 
-  // 2. Build system instructions
-  const systemInstruction = ARTFLOW_SYSTEM_PROMPT + projectContextText;
+  // 2. Build system instructions with language directive
+  const langPrompt = params.preferredLanguage === 'en'
+    ? `\n\n[USER PREFERRED LANGUAGE]: English (US). Please respond with high artistic quality in English, while never translating original artwork titles or artists' names.`
+    : `\n\n[IDIOMA DE PREFERÊNCIA DO USUÁRIO]: Português (Brasil). Responda com excelência artística em português brasileiro, e nunca traduza nomes originais de obras de arte ou artistas.`;
+
+  const systemInstruction = ARTFLOW_SYSTEM_PROMPT + langPrompt + projectContextText;
 
   // 3. Format contents with history
   const contents: any[] = [];
@@ -543,6 +549,7 @@ export default async function handler(req: any, res: any) {
       message: requestData.message,
       history: requestData.history,
       intent: requestData.intent,
+      preferredLanguage: requestData.preferredLanguage,
       projectId: requestData.projectId,
       db: adminDb,
     });

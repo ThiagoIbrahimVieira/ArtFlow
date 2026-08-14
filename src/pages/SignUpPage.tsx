@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { Languages } from 'lucide-react';
 import { HERO_ARTWORK_URL } from '../data/mockData';
 import { FormInput } from '../components/FormInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ArtworkImage } from '../components/ArtworkImage';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 
 export const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
   const { signUp } = useAuth();
+  const { t, openLanguageModal } = useLanguage();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,24 +27,26 @@ export const SignUpPage: React.FC = () => {
       await signUp({ displayName: fullName, email, password });
       navigate('/home', { replace: true });
     } catch (err: any) {
-      setError(err?.message || 'Failed to create account. Please check your inputs.');
+      setError(err?.message || t('errors.generic'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] flex flex-col justify-between p-4 sm:p-5 max-w-[440px] mx-auto pb-8">
+    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] flex flex-col justify-between p-4 sm:p-5 max-w-[440px] mx-auto pb-8 text-left">
       {/* Header */}
       <header className="flex items-center justify-between pt-2 pb-3">
-        <h1 className="font-serif text-[28px] font-normal tracking-tight text-[#F1E2CB]">
+        <h1 className="font-display text-[28px] font-semibold tracking-tight text-[#FDF8F0]">
           ArtFlow
         </h1>
         <button
-          aria-label="Notifications"
-          className="w-10 h-10 rounded-full bg-[#272320] border border-[#433D37] flex items-center justify-center text-[#F1E2CB] hover:bg-[#332E2A] transition-colors shadow-sm"
+          type="button"
+          onClick={openLanguageModal}
+          aria-label={t('common.language')}
+          className="w-10 h-10 rounded-full bg-[#272320] border border-[#433D37] flex items-center justify-center text-[#FDF8F0] hover:bg-[#332E2A] transition-colors shadow-sm cursor-pointer"
         >
-          <Bell className="w-[18px] h-[18px] stroke-[1.75]" />
+          <Languages className="w-[18px] h-[18px] stroke-[1.75]" />
         </button>
       </header>
 
@@ -59,11 +63,11 @@ export const SignUpPage: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-tr from-black/80 via-black/40 to-transparent" />
           
           <div className="absolute bottom-5 left-5 right-5 text-left z-10">
-            <h2 className="font-serif text-[38px] font-normal text-[#F1E2CB] leading-tight tracking-tight drop-shadow-md">
-              Sign Up
+            <h2 className="font-display text-[36px] sm:text-[38px] font-semibold text-[#FDF8F0] leading-tight tracking-tight drop-shadow-md">
+              {t('auth.signUpTitle')}
             </h2>
             <p className="font-sans text-xs text-[#EEDCC6]/90 mt-1 max-w-[240px] leading-relaxed">
-              Join ArtFlow and support artists around the world.
+              {t('auth.signUpSubtitle')}
             </p>
           </div>
         </div>
@@ -75,15 +79,15 @@ export const SignUpPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="flex-1 py-1.5 text-xs font-sans font-medium rounded-xl text-[#5C5144] hover:text-[#191715] transition-all"
+              className="flex-1 py-1.5 text-xs font-sans font-medium rounded-xl text-[#5C5144] hover:text-[#191715] transition-all cursor-pointer"
             >
-              Log In
+              {t('auth.loginTab')}
             </button>
             <button
               type="button"
-              className="flex-1 py-1.5 text-xs font-sans font-semibold rounded-xl bg-[#191715] text-[#F1E2CB] shadow-sm transition-all"
+              className="flex-1 py-1.5 text-xs font-sans font-semibold rounded-xl bg-[#191715] text-[#FDF8F0] shadow-sm transition-all"
             >
-              Sign Up
+              {t('auth.signUpTab')}
             </button>
           </div>
 
@@ -95,26 +99,26 @@ export const SignUpPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <FormInput
-              label="Full Name"
-              placeholder="Enter your full name"
+              label={t('auth.nameLabel')}
+              placeholder={t('auth.namePlaceholder')}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
             />
 
             <FormInput
-              label="Email"
+              label={t('auth.emailLabel')}
               type="email"
-              placeholder="Enter your email"
+              placeholder={t('auth.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
 
             <FormInput
-              label="Password"
+              label={t('auth.passwordLabel')}
               isPassword
-              placeholder="Create a password"
+              placeholder={t('auth.passwordPlaceholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -122,7 +126,7 @@ export const SignUpPage: React.FC = () => {
 
             <div className="pt-2">
               <PrimaryButton type="submit" variant="dark" size="lg" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating account...' : 'Create account'}
+                {isSubmitting ? t('common.loading') : t('auth.signUpButton')}
               </PrimaryButton>
             </div>
           </form>
@@ -130,13 +134,13 @@ export const SignUpPage: React.FC = () => {
           {/* Footer Link */}
           <div className="mt-4 text-center">
             <p className="text-xs font-sans text-[#5C5144]">
-              Already have an account?{' '}
+              {t('auth.alreadyHaveAccount')}{' '}
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="font-semibold text-[#191715] hover:underline"
+                className="font-semibold text-[#191715] hover:underline cursor-pointer"
               >
-                Log in
+                {t('auth.loginTab')}
               </button>
             </p>
           </div>

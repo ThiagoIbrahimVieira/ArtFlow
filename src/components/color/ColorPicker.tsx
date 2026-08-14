@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLanguage } from '../../hooks/useLanguage';
 
 interface ColorPickerProps {
   color: string; // HEX
@@ -46,6 +47,7 @@ function hsbToHex(h: number, s: number, b: number): string {
 }
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange }) => {
+  const { t } = useLanguage();
   const [hsb, setHsb] = useState<{ h: number; s: number; b: number }>(() => hexToHsb(color || '#D9B98D'));
   const [hexInput, setHexInput] = useState(color?.toUpperCase() || '#D9B98D');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -171,7 +173,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange }) => 
       {/* Hue Slider */}
       <div className="space-y-1">
         <div className="flex justify-between text-[10px] font-sans text-[#A99D8E]">
-          <span>Hue (Matiz)</span>
+          <span>{t('colorPicker.hue')}</span>
           <span>{hsb.h}°</span>
         </div>
         <input
@@ -190,7 +192,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange }) => 
       {/* Brightness / Value Slider */}
       <div className="space-y-1">
         <div className="flex justify-between text-[10px] font-sans text-[#A99D8E]">
-          <span>Brightness (Brilho)</span>
+          <span>{t('colorPicker.brightness')}</span>
           <span>{hsb.b}%</span>
         </div>
         <input
@@ -213,15 +215,15 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange }) => 
             className="w-7 h-7 rounded-lg border border-white/20 shadow-sm"
             style={{ backgroundColor: currentHex }}
           />
-          <span className="font-mono text-xs text-[#F1E2CB] font-medium">{currentHex}</span>
+          <span className="font-mono text-xs text-[#FDF8F0] font-medium">{currentHex}</span>
         </div>
 
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-[11px] font-sans text-[#D9B98D] hover:text-[#E8DAC7] underline"
+          className="text-[11px] font-sans text-[#D9B98D] hover:text-[#E8DAC7] underline cursor-pointer"
         >
-          {showAdvanced ? 'Ocultar HEX' : 'HEX Avançado'}
+          {t('colorPicker.advanced')}
         </button>
       </div>
 
@@ -233,7 +235,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange }) => 
             onChange={handleHexInputChange}
             placeholder="#HEX"
             maxLength={7}
-            className="w-full px-3 py-1.5 text-xs bg-[#272320] border border-[#433D37] rounded-xl text-[#F1E2CB] font-mono focus:outline-none focus:border-[#D9B98D]"
+            className="w-full px-3 py-1.5 text-xs bg-[#272320] border border-[#433D37] rounded-xl text-[#FDF8F0] font-mono focus:outline-none focus:border-[#D9B98D]"
           />
         </div>
       )}

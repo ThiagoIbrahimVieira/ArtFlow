@@ -7,31 +7,31 @@ import { PaletteCard } from '../components/PaletteCard';
 import { ColorSwatchEditor } from '../components/color/ColorSwatchEditor';
 import { Palette } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import { listPalettes, createPalette } from '../services/paletteService';
-
-const PALETTE_CATEGORY_SUGGESTIONS = [
-  'Warm',
-  'Cool',
-  'Earthy',
-  'Pastel',
-  'Neon',
-  'Monochromatic',
-  'Retro',
-  'Cyberpunk',
-  'Dark Fantasy',
-];
 
 export const PalettesPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [palettes, setPalettes] = useState<Palette[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const paletteCategories = [
+    t('palettes.harmonies.warm'),
+    t('palettes.harmonies.cool'),
+    t('palettes.harmonies.analogous'),
+    t('palettes.harmonies.complementary'),
+    t('palettes.harmonies.triadic'),
+    t('palettes.harmonies.monochromatic'),
+    t('palettes.harmonies.custom'),
+  ];
+
   // Manual Palette Modal State
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [manualName, setManualName] = useState('');
-  const [manualCategory, setManualCategory] = useState('Warm');
+  const [manualCategory, setManualCategory] = useState(paletteCategories[0]);
   const [manualColors, setManualColors] = useState(['#191715', '#3D2918', '#A45F32', '#D9B98D', '#F1E2CB']);
   const [isCreating, setIsCreating] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export const PalettesPage: React.FC = () => {
       setPalettes(data);
     } catch (err: any) {
       console.error('Failed to list palettes:', err);
-      setError('Não foi possível carregar as paletas. Verifique sua conexão.');
+      setError(t('errors.firestoreError'));
     } finally {
       setLoading(false);
     }
@@ -60,7 +60,7 @@ export const PalettesPage: React.FC = () => {
     if (!user || !manualName.trim()) return;
 
     if (manualColors.length < 2 || manualColors.length > 10) {
-      setModalError('A paleta deve conter entre 2 e 10 cores.');
+      setModalError(t('errors.generic'));
       return;
     }
 
@@ -80,60 +80,63 @@ export const PalettesPage: React.FC = () => {
       setManualColors(['#191715', '#3D2918', '#A45F32', '#D9B98D', '#F1E2CB']);
       setIsManualModalOpen(false);
     } catch (err: any) {
-      setModalError(err?.message || 'Falha ao criar paleta.');
+      setModalError(err?.message || t('errors.firestoreError'));
     } finally {
       setIsCreating(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-24 text-left">
+    <div className="min-h-screen bg-[#191715] text-[#F1E2CB] max-w-[440px] md:max-w-[800px] mx-auto relative pb-28 text-left">
       <AppHeader />
 
-      <main className="px-4 sm:px-5 space-y-4 pt-1">
+      <main className="px-4 sm:px-5 space-y-5 pt-1">
         {/* Title & Actions */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-serif text-[26px] font-normal text-[#F1E2CB] leading-tight">
-              Biblioteca de Paletas
+            <h2 className="font-display text-[24px] sm:text-[26px] font-semibold text-[#FDF8F0] leading-tight tracking-tight">
+              {t('palettes.myPalettes')}
             </h2>
             <p className="text-xs font-sans text-[#A99D8E] mt-0.5">
-              Harmonias de cores para inspirar e aplicar em suas artes.
+              {t('palettes.colorMuseDesc')}
             </p>
           </div>
 
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => setIsManualModalOpen(true)}
-              aria-label="Criar Paleta Manual"
-              className="p-2 rounded-2xl bg-[#272320] border border-[#3A332C] text-[#F1E2CB] hover:bg-[#332E2A] transition-colors"
-              title="Nova paleta manual"
+              aria-label={t('palettes.newPalette')}
+              className="p-2.5 rounded-2xl bg-[#272320] border border-[#3A332C] text-[#FDF8F0] hover:bg-[#332E2A] transition-colors shadow-sm cursor-pointer"
+              title={t('palettes.newPalette')}
             >
               <Plus className="w-5 h-5" />
             </button>
 
             {/* Navigate to ArtFlow AI with intent create_palette */}
             <button
+              type="button"
               onClick={() => navigate('/ai?intent=create_palette')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#D9B98D] text-[#191715] font-sans text-xs font-medium hover:bg-[#E8DAC7] transition-all shadow-sm active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#D9B98D] text-[#191715] font-sans text-xs font-semibold hover:bg-[#E8DAC7] transition-all shadow-sm active:scale-95 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
-              <span>✨ Criar com ArtFlow AI</span>
+              <span>{t('palettes.generateWithAI')}</span>
             </button>
           </div>
         </div>
 
         {/* Featured & Palette List */}
         {loading ? (
-          <div className="py-12 text-center text-xs text-[#A99D8E]">Carregando paletas...</div>
+          <div className="py-12 text-center text-xs font-sans text-[#A99D8E]">{t('common.loading')}</div>
         ) : error ? (
           <div className="py-12 text-center space-y-3">
             <p className="text-sm font-sans text-red-400">{error}</p>
             <button
+              type="button"
               onClick={fetchPalettes}
-              className="px-4 py-2 bg-[#272320] border border-[#433D37] text-[#D9B98D] text-xs font-sans rounded-xl hover:bg-[#332E2A] transition-colors"
+              className="px-4 py-2 bg-[#272320] border border-[#433D37] text-[#D9B98D] text-xs font-sans rounded-xl hover:bg-[#332E2A] transition-colors cursor-pointer"
             >
-              Tentar novamente
+              {t('common.retry')}
             </button>
           </div>
         ) : palettes.length > 0 ? (
@@ -148,19 +151,21 @@ export const PalettesPage: React.FC = () => {
         ) : (
           <div className="py-16 text-center text-[#A99D8E] space-y-3">
             <PaletteIcon className="w-10 h-10 mx-auto text-[#7A7165] opacity-50" />
-            <p className="text-sm font-sans">Nenhuma paleta encontrada.</p>
+            <p className="text-sm font-sans">{t('palettes.noPalettesFound')}</p>
             <div className="flex justify-center gap-2 pt-1">
               <button
+                type="button"
                 onClick={() => setIsManualModalOpen(true)}
-                className="px-4 py-2 rounded-full border border-[#433D37] text-xs font-sans text-[#F1E2CB] hover:bg-[#272320]"
+                className="px-4 py-2 rounded-full border border-[#433D37] text-xs font-sans text-[#FDF8F0] hover:bg-[#272320] cursor-pointer"
               >
-                Criar Manualmente
+                {t('palettes.newPalette')}
               </button>
               <button
+                type="button"
                 onClick={() => navigate('/ai?intent=create_palette')}
-                className="px-4 py-2 rounded-full bg-[#D9B98D] text-[#191715] text-xs font-sans font-medium hover:bg-[#E8DAC7]"
+                className="px-4 py-2 rounded-full bg-[#D9B98D] text-[#191715] text-xs font-sans font-medium hover:bg-[#E8DAC7] cursor-pointer"
               >
-                ✨ Gerar com IA
+                ✨ {t('palettes.generateWithAI')}
               </button>
             </div>
           </div>
@@ -172,13 +177,14 @@ export const PalettesPage: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar">
           <div className="w-full max-w-[390px] max-h-[90vh] bg-[#272320] border border-[#433D37] rounded-3xl p-5 text-[#F1E2CB] shadow-2xl flex flex-col space-y-4 my-auto text-left">
             <div className="flex items-center justify-between border-b border-[#3A332C] pb-3">
-              <h3 className="font-serif text-[20px] font-normal text-[#F1E2CB]">
-                Criar Paleta Manual
+              <h3 className="font-display text-[20px] font-semibold text-[#FDF8F0]">
+                {t('palettes.newPalette')}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsManualModalOpen(false)}
-                className="text-[#A99D8E] hover:text-[#F1E2CB] p-1"
+                aria-label={t('common.close')}
+                className="text-[#A99D8E] hover:text-[#FDF8F0] p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -193,41 +199,41 @@ export const PalettesPage: React.FC = () => {
             <form onSubmit={handleCreateManualPalette} className="space-y-3.5 overflow-y-auto no-scrollbar max-h-[65vh] pr-0.5">
               <div>
                 <label className="block text-xs font-sans text-[#A99D8E] mb-1 font-medium">
-                  Nome da Paleta *
+                  {t('palettes.paletteNameLabel')} *
                 </label>
                 <input
                   type="text"
-                  placeholder="ex: Pôr do Sol Dourado"
+                  placeholder={t('palettes.paletteNamePlaceholder')}
                   value={manualName}
                   onChange={(e) => setManualName(e.target.value)}
                   maxLength={80}
-                  className="w-full px-3.5 py-2 text-xs bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D]"
+                  className="w-full px-3.5 py-2 text-xs font-sans bg-[#191715] border border-[#3A332C] rounded-xl text-[#FDF8F0] focus:outline-none focus:border-[#D9B98D]"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-sans text-[#A99D8E] mb-1 font-medium">
-                  Categoria
+                  {t('palettes.harmonyLabel')}
                 </label>
                 <input
                   type="text"
-                  placeholder="Digite ou escolha abaixo"
+                  placeholder={t('palettes.harmonyLabel')}
                   value={manualCategory}
                   onChange={(e) => setManualCategory(e.target.value)}
                   maxLength={60}
-                  className="w-full px-3.5 py-2 text-xs bg-[#191715] border border-[#3A332C] rounded-xl text-[#F1E2CB] focus:outline-none focus:border-[#D9B98D] mb-1.5"
+                  className="w-full px-3.5 py-2 text-xs font-sans bg-[#191715] border border-[#3A332C] rounded-xl text-[#FDF8F0] focus:outline-none focus:border-[#D9B98D] mb-1.5"
                 />
                 <div className="flex flex-wrap gap-1">
-                  {PALETTE_CATEGORY_SUGGESTIONS.map((cat) => (
+                  {paletteCategories.map((cat) => (
                     <button
                       type="button"
                       key={cat}
                       onClick={() => setManualCategory(cat)}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-sans transition-colors ${
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-sans transition-colors cursor-pointer ${
                         manualCategory === cat
-                          ? 'bg-[#D9B98D] text-[#191715] font-medium'
-                          : 'bg-[#191715] text-[#A99D8E] hover:text-[#F1E2CB] border border-[#3A332C]'
+                          ? 'bg-[#D9B98D] text-[#191715] font-semibold'
+                          : 'bg-[#191715] text-[#A99D8E] hover:text-[#FDF8F0] border border-[#3A332C]'
                       }`}
                     >
                       {cat}
@@ -247,16 +253,16 @@ export const PalettesPage: React.FC = () => {
                   type="button"
                   onClick={() => setIsManualModalOpen(false)}
                   disabled={isCreating}
-                  className="flex-1 py-2.5 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E] hover:bg-[#332E2A]"
+                  className="flex-1 py-2.5 rounded-full border border-[#433D37] text-xs font-sans text-[#A99D8E] hover:bg-[#332E2A] cursor-pointer"
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex-1 py-2.5 rounded-full bg-[#D9B98D] text-[#191715] font-semibold text-xs font-sans hover:bg-[#E8DAC7] disabled:opacity-50 transition-colors shadow-sm"
+                  className="flex-1 py-2.5 rounded-full bg-[#D9B98D] text-[#191715] font-semibold text-xs font-sans hover:bg-[#E8DAC7] disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
                 >
-                  {isCreating ? 'Criando...' : 'Criar Paleta'}
+                  {isCreating ? t('common.loading') : t('palettes.savePalette')}
                 </button>
               </div>
             </form>
